@@ -1,0 +1,40 @@
+// Prisma Schema — pipeline_user 数据库
+// users 和 apps 表已通过 Docker migration 创建，Prisma 负责查询，不负责 DDL
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== 用户表 =====
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  apps App[]
+
+  @@map("users")
+}
+
+// ===== 应用表 =====
+model App {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  name      String
+  appKey    String   @unique @map("app_key") @db.Char(24)
+  secretKey String   @unique @map("secret_key") @db.Char(32)
+  domain    String?
+  status    Int      @default(1) @db.TinyInt
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("apps")
+}
