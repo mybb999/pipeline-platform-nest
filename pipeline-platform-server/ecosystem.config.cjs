@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: 'server',
-      script: './pipeline-platform-server/dist/src/main.js',
+      script: './dist/src/main.js',
       instances: 2,
       exec_mode: 'cluster',
       watch: false,
@@ -10,7 +10,7 @@ module.exports = {
     },
     {
       name: 'worker',
-      script: './pipeline-platform-server/dist/src/worker.js',
+      script: './dist/src/worker.js',
       instances: 4,
       exec_mode: 'fork',
       watch: false,
