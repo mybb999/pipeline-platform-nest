@@ -102,11 +102,56 @@ nginx -t && systemctl restart nginx
 - 安全组放开 80 端口（0.0.0.0/0）
 - DNS：A 记录 `pipeline.ai-myhome.space` → 服务器公网 IP
 
+### 8. 自动化部署（CI/CD）
+
+创建 webhook 服务，GitHub push 后自动拉代码编译重启：
+
+```bash
+cat > /opt/deploy-webhook.js << 'SCRIPT'
+const http = require('http');
+const { execSync } = require('child_process');
+
+const PORT = 9000;
+
+http.createServer((req, res) => {
+  if (req.method !== 'POST') { res.end(); return; }
+  
+  const body = [];
+  req.on('data', d => body.push(d));
+  req.on('end', () => {
+    const payload = JSON.parse(Buffer.concat(body).toString());
+    if (payload.ref !== 'refs/heads/master') { res.end('skip'); return; }
+
+    console.log('[deploy] 开始部署:', new Date().toISOString());
+    try {
+      execSync('cd /opt/pipeline-platform-nest && git pull origin master', { stdio: 'inherit' });
+      execSync('cd /opt/pipeline-platform-nest/pipeline-platform-server && npm install && npx prisma generate && npm run build && npm run build:sdk', { stdio: 'inherit' });
+      execSync('cd /opt/pipeline-platform-nest/pipeline-platform-web && npm install && npm run build', { stdio: 'inherit' });
+      execSync('pm2 restart all', { stdio: 'inherit' });
+      console.log('[deploy] 部署完成');
+      res.end('ok');
+    } catch(e) {
+      console.error('[deploy] 失败:', e.message);
+      res.statusCode = 500;
+      res.end('fail');
+    }
+  });
+}).listen(PORT, () => console.log('[webhook] 监听端口', PORT));
+SCRIPT
+
+pm2 start /opt/deploy-webhook.js --name webhook
+pm2 save
+```
+
+> 阿里云安全组需放开 9000 端口。项目代码内已包含 `.github/workflows/deploy.yml`，每次推送即可触发。
+
 ---
 
 ## 后续更新部署（代码改动后）
 
-在本地提交推送代码后，服务器上执行：
+**自动：** 本地 `git push` → GitHub Actions 触发 → 服务器自动更新。
+
+**手动：** 如果需要手动部署：
 
 ```bash
 # 1. 拉新代码

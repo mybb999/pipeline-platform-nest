@@ -1,0 +1,12 @@
+name: Deploy
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify server to redeploy
+        run: curl -X POST http://pipeline.ai-myhome.space:9000/deploy
