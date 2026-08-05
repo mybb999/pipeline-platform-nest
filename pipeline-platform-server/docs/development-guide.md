@@ -598,7 +598,7 @@ pm2 restart all
 
 | # | 优化项 | 当前方案 | 目标方案 | 优先级 |
 |------|------|------|------|:--:|
-| 1 | 消息队列 | Redis RPUSH/LPOP | RabbitMQ | 高 |
+| 1 | 消息队列 | Redis RPUSH/LPOP | RabbitMQ | ✅ 已完成 |
 | 2 | 分布式锁 | 手写 SET NX | Redlock 库 | ✅ 已完成 |
 | 3 | 日志系统 | `console.log` | Winston / Pino | 中 |
 | 4 | 单元测试 | 无 | Jest 覆盖核心模块 | 中 |
@@ -630,6 +630,38 @@ src/worker/cron.service.ts         # tryLock() → redlock.acquire()
 npx tsc --noEmit        # 编译通过
 npm run dev             # Worker 启动无报错
 npm run worker          # @Cron 定时任务正常执行
+```
+
+### Task 18 — RabbitMQ 消息队列
+
+**目标：** 将事件采集的消息队列从 Redis 升级为 RabbitMQ，生产者推送、消费者订阅。
+
+**修改文件：**
+```
+docker-compose.yml                        # 新增 RabbitMQ 容器
+src/config/configuration.ts               # 新增 rabbitmq 配置
+src/app.module.ts                         # 注册 RabbitMQModule（HTTP）
+src/modules/collector/collector.service.ts # RPUSH → AmqpConnection.publish()
+src/worker/worker.module.ts               # 注册 RabbitMQModule（Worker）
+src/worker/event.consumer.ts              # 新建：@RabbitSubscribe 消费者
+src/worker.ts                             # 移除 while(true) 循环
+```
+
+**架构变化：**
+
+| | 改前（Redis） | 改后（RabbitMQ） |
+|------|------|------|
+| 生产者 | `RPUSH event:queue` | `amqp.publish('pipeline.events', 'event.collect', msg)` |
+| 消费者 | `while(true) LPOP` | `@RabbitSubscribe` 装饰器自动订阅 |
+| 可靠性 | 消息无持久化 | 持久化队列 + 消费者 ACK |
+| 重启丢失 | 可能丢失队列中的消息 | 队列持久化，重启不丢 |
+
+**验证：**
+```bash
+npx tsc --noEmit        # 编译通过
+docker compose up -d    # RabbitMQ 容器启动
+npm run dev             # HTTP 服务可发布消息
+npm run worker          # Worker 消费者正常接收
 ```
 
 > 优化顺序按优先级从上到下执行，每个优化项为一个独立 Task。

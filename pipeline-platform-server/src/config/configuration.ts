@@ -11,6 +11,12 @@ export default () => ({
     host: process.env.REDIS_HOST || '127.0.0.1',
     port: parseInt(process.env.REDIS_PORT || '6379', 10),
   },
+  rabbitmq: {
+    host: process.env.RABBITMQ_HOST || '127.0.0.1',
+    port: parseInt(process.env.RABBITMQ_PORT || '5672', 10),
+    user: process.env.RABBITMQ_USER || 'pipeline',
+    password: process.env.RABBITMQ_PASSWORD || 'pipeline_dev_2024',
+  },
   jwt: {
     secret: process.env.JWT_SECRET || 'dev_jwt_secret_change_in_production',
     expiresIn: '7d',

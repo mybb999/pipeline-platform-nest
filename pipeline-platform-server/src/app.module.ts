@@ -1,7 +1,9 @@
-// AppModule — 应用根模块，导入全局配置/数据库/Redis/限流 及所有业务模块
+// AppModule — 应用根模块，导入全局配置/数据库/Redis/RabbitMQ/限流 及所有业务模块
 import { Module } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { RabbitMQModule } from '@golevelup/nestjs-rabbitmq';
 import { ConfigModule } from './config/config.module';
+import { ConfigService } from '@nestjs/config';
 import { DatabaseModule } from './database/database.module';
 import { RedisModule, REDIS_CLIENT } from './redis/redis.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -21,6 +23,19 @@ import type Redis from 'ioredis';
     PrismaModule,
     AuthModule,
     AppsModule,
+    RabbitMQModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        uri: `amqp://${config.get('rabbitmq.user')}:${config.get('rabbitmq.password')}@${config.get('rabbitmq.host')}:${config.get('rabbitmq.port')}`,
+        exchanges: [
+          {
+            name: 'pipeline.events',
+            type: 'topic',
+          },
+        ],
+      }),
+    }),
     ThrottlerModule.forRootAsync({
       imports: [RedisModule],
       inject: [REDIS_CLIENT],
