@@ -198,9 +198,10 @@ pm2 restart all          # 重启全部进程
 pm2 stop all             # 停止全部进程
 
 # Docker
-docker compose up -d     # 启动数据库
-docker compose down      # 停止数据库
-docker ps                # 查看运行中的容器
+docker compose up -d rabbitmq  # 启动 RabbitMQ
+docker compose up -d           # 启动所有服务
+docker compose down            # 停止
+docker ps                      # 查看运行中的容器
 
 # Nginx
 nginx -t                 # 测试配置
