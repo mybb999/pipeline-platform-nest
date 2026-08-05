@@ -36,8 +36,10 @@ export class StatsService {
   }
 
   async getRealtimeEvents(appId: number, limit = 20): Promise<any[]> {
-    const tables: string[] = [];
     const now = new Date();
+    const tables: string[] = [];
+
+    // 收集最近 2 天的分表名
     for (let i = 0; i < 2; i++) {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
@@ -47,22 +49,23 @@ export class StatsService {
       tables.push(`events_${y}${m}${day}`);
     }
 
-    const unionQueries = tables.map(
-      (t) =>
-        `SELECT app_id, event_type, url, device_type, city, created_at
-         FROM \`${t}\` WHERE app_id = ?`,
-    );
-
-    try {
-      const [rows] = await this.logDb.query<any[]>(
-        `${unionQueries.join(' UNION ALL ')}
-         ORDER BY created_at DESC
-         LIMIT ?`,
-        [...tables.map(() => appId), limit],
-      );
-      return rows;
-    } catch {
-      return [];
+    // 只查询实际存在的表
+    const allRows: any[] = [];
+    for (const table of tables) {
+      try {
+        const [rows] = await this.logDb.query<any[]>(
+          `SELECT app_id, event_type, url, device_type, city, created_at
+           FROM \`${table}\` WHERE app_id = ?`,
+          [appId],
+        );
+        allRows.push(...rows);
+      } catch {
+        // 表不存在则跳过
+      }
     }
+
+    // 按时间倒序，截取 limit 条
+    allRows.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return allRows.slice(0, limit);
   }
 }
