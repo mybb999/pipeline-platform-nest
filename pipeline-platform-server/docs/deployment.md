@@ -102,48 +102,36 @@ nginx -t && systemctl restart nginx
 - 安全组放开 80 端口（0.0.0.0/0）
 - DNS：A 记录 `pipeline.ai-myhome.space` → 服务器公网 IP
 
-### 8. 自动化部署（CI/CD）
+### 8. 自动化部署（Cron 定时检查）
 
-创建 webhook 服务，GitHub push 后自动拉代码编译重启：
+服务器每分钟检查 GitHub 是否有新提交，有则自动拉取编译重启：
 
 ```bash
-cat > /opt/deploy-webhook.js << 'SCRIPT'
-const http = require('http');
-const { execSync } = require('child_process');
-
-const PORT = 9000;
-
-http.createServer((req, res) => {
-  if (req.method !== 'POST') { res.end(); return; }
-  
-  const body = [];
-  req.on('data', d => body.push(d));
-  req.on('end', () => {
-    const payload = JSON.parse(Buffer.concat(body).toString());
-    if (payload.ref !== 'refs/heads/master') { res.end('skip'); return; }
-
-    console.log('[deploy] 开始部署:', new Date().toISOString());
-    try {
-      execSync('cd /opt/pipeline-platform-nest && git pull origin master', { stdio: 'inherit' });
-      execSync('cd /opt/pipeline-platform-nest/pipeline-platform-server && npm install && npx prisma generate && npm run build && npm run build:sdk', { stdio: 'inherit' });
-      execSync('cd /opt/pipeline-platform-nest/pipeline-platform-web && npm install && npm run build', { stdio: 'inherit' });
-      execSync('pm2 restart all', { stdio: 'inherit' });
-      console.log('[deploy] 部署完成');
-      res.end('ok');
-    } catch(e) {
-      console.error('[deploy] 失败:', e.message);
-      res.statusCode = 500;
-      res.end('fail');
-    }
-  });
-}).listen(PORT, () => console.log('[webhook] 监听端口', PORT));
+# 创建部署检查脚本
+cat > /opt/deploy-check.sh << 'SCRIPT'
+#!/bin/bash
+cd /opt/pipeline-platform-nest
+git fetch origin master 2>&1
+LOCAL=$(git rev-parse HEAD)
+REMOTE=$(git rev-parse origin/master)
+if [ "$LOCAL" != "$REMOTE" ]; then
+  echo "[deploy] $(date) 检测到新提交"
+  git pull origin master
+  cd pipeline-platform-server && npm install && npx prisma generate && npm run build && npm run build:sdk
+  cd ../pipeline-platform-web && npm install && npm run build
+  pm2 restart all
+  echo "[deploy] 完成"
+fi
 SCRIPT
-
-pm2 start /opt/deploy-webhook.js --name webhook
-pm2 save
+chmod +x /opt/deploy-check.sh
 ```
 
-> 阿里云安全组需放开 9000 端口。项目代码内已包含 `.github/workflows/deploy.yml`，每次推送即可触发。
+```bash
+# 设置定时任务，每分钟执行一次
+crontab -l 2>/dev/null | grep -v deploy-check | { cat; echo "* * * * * /opt/deploy-check.sh >> /var/log/deploy.log 2>&1"; } | crontab -
+```
+
+> 此命令会自动跳过已存在的 deploy-check 任务再新增，重复执行不会创建多条。
 
 ---
 
@@ -203,14 +191,24 @@ curl http://localhost:3000/api/health
 ## 常用管理命令
 
 ```bash
-pm2 status          # 查看进程状态
-pm2 logs            # 实时日志
-pm2 restart all     # 重启全部进程
-pm2 stop all        # 停止全部进程
+# PM2
+pm2 status               # 查看进程状态
+pm2 logs                 # 实时日志
+pm2 logs webhook         # 自动化部署日志
+pm2 restart all          # 重启全部进程
+pm2 stop all             # 停止全部进程
 
-docker compose up -d      # 启动数据库
-docker compose down       # 停止数据库
+# Docker
+docker compose up -d     # 启动数据库
+docker compose down      # 停止数据库
+docker ps                # 查看运行中的容器
 
-nginx -t                  # 测试 Nginx 配置
-systemctl restart nginx   # 重启 Nginx
+# Nginx
+nginx -t                 # 测试配置
+systemctl restart nginx  # 重启
+
+# 自动化部署日志
+tail /var/log/deploy.log       # 查看最近部署日志
+cat /var/log/deploy.log
+crontab -l                     # 查看定时任务
 ```
