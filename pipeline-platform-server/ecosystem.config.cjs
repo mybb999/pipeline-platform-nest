@@ -11,7 +11,7 @@ module.exports = {
     {
       name: 'worker',
       script: './dist/src/worker.js',
-      instances: 4,
+      instances: 2,
       exec_mode: 'fork',
       watch: false,
       env: { NODE_ENV: 'production' },

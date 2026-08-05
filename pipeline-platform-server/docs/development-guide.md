@@ -516,19 +516,35 @@ npm run dev             # 启动后调用注册/登录/创建应用 API，功能
 
 ---
 
-## 阶段五：部署（Phase 7，待做）
+## 阶段五：部署（Phase 7）
 
-基于旧项目的部署方案，适配 NestJS：
+### Task 16 — 生产部署
+
+**目标：** 将项目部署到阿里云轻量云服务器，Docker + PM2 + Nginx。
+
+**服务器信息：**
+
+| 项目 | 值 |
+|------|-----|
+| 公网 IP | 120.25.122.243 |
+| 域名 | pipeline.ai-myhome.space |
+| 系统 | Ubuntu 22.04 |
+| 目录 | /opt/pipeline-platform-nest |
+
+**部署内容：**
+- Docker Compose 启动 MySQL 8.0 + Redis 7
+- PM2 管理 NestJS（server × 2 cluster + worker × 4 fork）
+- Nginx 反向代理 + 托管前端静态文件
+
+**详细部署步骤：** `docs/deployment.md`
+
+**后续更新流程：**
 
 ```bash
-# 1. 编译
-npm run build          # → dist/main.js, dist/worker.js
-npm run build:sdk      # → sdk-dist/sdk.js
-
-# 2. 启动
-pm2 start ecosystem.config.cjs
-#   ├── server × 2  (cluster)
-#   └── worker × 4  (fork)
+cd /opt/pipeline-platform-nest && git pull origin master
+cd pipeline-platform-server && npm install && npx prisma generate && npm run build && npm run build:sdk
+cd ../pipeline-platform-web && npm install && npm run build
+pm2 restart all
 ```
 
 ---
@@ -552,6 +568,7 @@ pm2 start ecosystem.config.cjs
 | 13 | `npm run build:sdk` 成功输出 `sdk-dist/sdk.js` |
 | 14 | 浏览器打开 `/api/docs` 看到 Swagger 页面 |
 | 15 | `npx prisma generate` 成功 + `npx tsc --noEmit` 编译通过 |
+| 16 | `curl http://120.25.122.243/api/health` 返回健康状态 |
 
 ---
 
