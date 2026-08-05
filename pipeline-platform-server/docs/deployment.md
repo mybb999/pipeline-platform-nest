@@ -137,7 +137,7 @@ crontab -l 2>/dev/null | grep -v deploy-check | { cat; echo "* * * * * /opt/depl
 
 ## 后续更新部署（代码改动后）
 
-**自动：** 本地 `git push` → GitHub Actions 触发 → 服务器自动更新。
+**自动：** 本地 `git push` → cron 每分钟检测 → 服务器自动拉取编译重启。
 
 **手动：** 如果需要手动部署：
 
@@ -194,7 +194,6 @@ curl http://localhost:3000/api/health
 # PM2
 pm2 status               # 查看进程状态
 pm2 logs                 # 实时日志
-pm2 logs webhook         # 自动化部署日志
 pm2 restart all          # 重启全部进程
 pm2 stop all             # 停止全部进程
 
@@ -208,7 +207,6 @@ nginx -t                 # 测试配置
 systemctl restart nginx  # 重启
 
 # 自动化部署日志
-tail /var/log/deploy.log       # 查看最近部署日志
-cat /var/log/deploy.log
+tail /var/log/deploy.log       # 查看部署日志
 crontab -l                     # 查看定时任务
 ```
