@@ -9,4 +9,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Notify server to redeploy
-        run: curl -X POST http://pipeline.ai-myhome.space:9000/deploy
+        # 备案通过后切回域名: http://pipeline.ai-myhome.space:9000/deploy
+        run: curl -X POST http://120.25.122.243:9000/deploy
