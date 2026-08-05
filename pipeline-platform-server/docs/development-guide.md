@@ -599,7 +599,7 @@ pm2 restart all
 | # | 优化项 | 当前方案 | 目标方案 | 优先级 |
 |------|------|------|------|:--:|
 | 1 | 消息队列 | Redis RPUSH/LPOP | RabbitMQ | 高 |
-| 2 | 分布式锁 | 手写 SET NX | Redlock 库 | 高 |
+| 2 | 分布式锁 | 手写 SET NX | Redlock 库 | ✅ 已完成 |
 | 3 | 日志系统 | `console.log` | Winston / Pino | 中 |
 | 4 | 单元测试 | 无 | Jest 覆盖核心模块 | 中 |
 | 5 | ORM 统一 | 部分 Prisma + 部分 mysql2 | 全量 Prisma | 低 |
@@ -633,3 +633,13 @@ npm run worker          # @Cron 定时任务正常执行
 ```
 
 > 优化顺序按优先级从上到下执行，每个优化项为一个独立 Task。
+
+---
+
+## 已知问题
+
+| # | 问题 | 原因 | 解决方案 | 状态 |
+|------|------|------|------|:--:|
+| 1 | 博客 HTTPS 无法加载 SDK HTTP 脚本 | Vercel 部署博客为 HTTPS，Pipeline 服务器仅 HTTP | 备案后再配 HTTPS | ⏳ 备案中 |
+| 2 | 服务器 git pull 偶尔超时 | GitHub 国内访问不稳定 | 已临时设 `git config http.version HTTP/1.1`，后续可迁 Gitee | 🔧 临时修复 |
+| 3 | 中文应用名显示乱码 | curl 创建时编码问题（非系统 bug） | 前端页面直接创建即可 | ✅ 已确认 |
