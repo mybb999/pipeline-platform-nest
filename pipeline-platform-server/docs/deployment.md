@@ -176,6 +176,30 @@ pm2 restart all
 
 > 如果 `.env` 或 `docker-compose.yml` 有改动，需要额外手动更新。
 
+## 服务器重启恢复
+
+服务器重启后 Docker 容器停止、PM2 进程清空、dist 目录可能丢失，按以下顺序恢复：
+
+```bash
+# 1. 启动数据库
+cd /opt/pipeline-platform-nest && docker compose up -d
+
+# 2. 重新编译（dist 可能在重启时丢失）
+cd /opt/pipeline-platform-nest/pipeline-platform-server
+npm run build
+
+# 3. 启动 PM2
+pm2 delete all
+pm2 start ecosystem.config.cjs
+pm2 save
+
+# 4. 重启 Nginx
+systemctl restart nginx
+
+# 5. 验证
+curl http://localhost:3000/api/health
+```
+
 ## 常用管理命令
 
 ```bash
