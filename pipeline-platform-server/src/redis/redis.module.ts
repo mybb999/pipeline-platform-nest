@@ -1,10 +1,12 @@
-// RedisModule — @Global() 全局 Redis 模块，创建 ioredis 客户端并导出 REDIS_CLIENT 令牌
+// RedisModule — @Global() 全局 Redis 模块，创建 ioredis 客户端并导出 REDIS_CLIENT 令牌 + Redlock 分布式锁
 import { Global, Module, OnApplicationShutdown, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
+import Redlock from 'redlock';
 import type { Redis as RedisType } from 'ioredis';
 
 export const REDIS_CLIENT = 'REDIS_CLIENT';
+export const REDLOCK = 'REDLOCK';
 
 @Global()
 @Module({
@@ -25,8 +27,20 @@ export const REDIS_CLIENT = 'REDIS_CLIENT';
         return redis;
       },
     },
+    {
+      provide: REDLOCK,
+      inject: [REDIS_CLIENT],
+      useFactory: (redis: RedisType) => {
+        return new Redlock([redis], {
+          driftFactor: 0.01,
+          retryCount: 3,
+          retryDelay: 200,
+          retryJitter: 100,
+        });
+      },
+    },
   ],
-  exports: [REDIS_CLIENT],
+  exports: [REDIS_CLIENT, REDLOCK],
 })
 export class RedisModule implements OnApplicationShutdown {
   constructor(@Inject(REDIS_CLIENT) private readonly redis: RedisType) {}

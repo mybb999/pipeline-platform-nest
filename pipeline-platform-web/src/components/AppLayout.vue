@@ -1,7 +1,7 @@
 <template>
   <el-container class="layout">
     <el-aside width="220px">
-      <div class="logo">📊 Pipeline</div>
+      <div class="logo">Pipeline 子系统数据检测</div>
       <el-menu
         :default-active="route.path"
         background-color="#001529"

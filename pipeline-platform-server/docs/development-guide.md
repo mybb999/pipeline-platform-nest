@@ -591,3 +591,45 @@ pm2 restart all
 | 自定义 Provider | `useFactory` + 字符串 Token | Database Module（3 个 Pool） |
 | 生命周期 | `OnApplicationShutdown` | DatabaseModule, RedisModule, PrismaService |
 | ORM | `PrismaClient` + `@Global()` Module | `PrismaService`（Auth + Apps 模块） |
+
+---
+
+## 阶段六：后续优化计划
+
+| # | 优化项 | 当前方案 | 目标方案 | 优先级 |
+|------|------|------|------|:--:|
+| 1 | 消息队列 | Redis RPUSH/LPOP | RabbitMQ | 高 |
+| 2 | 分布式锁 | 手写 SET NX | Redlock 库 | 高 |
+| 3 | 日志系统 | `console.log` | Winston / Pino | 中 |
+| 4 | 单元测试 | 无 | Jest 覆盖核心模块 | 中 |
+| 5 | ORM 统一 | 部分 Prisma + 部分 mysql2 | 全量 Prisma | 低 |
+| 6 | HTTPS | 无 | Let's Encrypt 免费证书 | 备案后 |
+| 7 | AI Agent | 无 | LangChain + RAG + LLM | 新功能 |
+
+### Task 17 — Redlock 分布式锁
+
+**目标：** 将 `cron.service.ts` 中手写 `SET NX` 锁替换为 Redlock 库，实现自动续期、自动释放、多实例容错。
+
+**修改文件：**
+```
+src/redis/redis.module.ts          # 新增 REDLOCK Provider
+src/worker/cron.service.ts         # tryLock() → redlock.acquire()
+```
+
+**改前 vs 改后：**
+
+| | 改前 | 改后 |
+|------|------|------|
+| 加锁 | `this.redis.set(key, '1', 'EX', ttl, 'NX')` | `this.redlock.acquire(['lock:xxx'], ttl)` |
+| 释放 | 等 TTL 过期 | `lock.release()` |
+| 抢锁失败 | `result !== 'OK'` | 捕获 `ResourceLockedError` |
+| 续期 | 无，超时自动释放 | 自动续期（防止任务执行过半锁被释放） |
+
+**验证：**
+```bash
+npx tsc --noEmit        # 编译通过
+npm run dev             # Worker 启动无报错
+npm run worker          # @Cron 定时任务正常执行
+```
+
+> 优化顺序按优先级从上到下执行，每个优化项为一个独立 Task。
