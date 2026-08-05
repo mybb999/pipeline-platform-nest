@@ -22,8 +22,8 @@
           <span>详细统计</span>
         </el-menu-item>
       </el-menu>
-      <div class="user-bar" v-if="auth.user">
-        <span>{{ auth.user.email }}</span>
+      <div class="user-bar" v-if="auth.isLoggedIn()">
+        <span>{{ auth.user?.email || '已登录' }}</span>
         <el-button type="danger" size="small" plain @click="handleLogout">退出</el-button>
       </div>
     </el-aside>
