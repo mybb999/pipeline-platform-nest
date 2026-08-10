@@ -672,6 +672,33 @@ npm run worker          # Worker 消费者正常接收
 
 | # | 问题 | 原因 | 解决方案 | 状态 |
 |------|------|------|------|:--:|
+### Task 19 — 2核2G 资源优化
+
+**目标：** 适配低配服务器，降低 CPU/内存占用。
+
+**修改：**
+```
+ecosystem.config.cjs       # server/worker 各减为 1 个 fork 进程
+docker-compose.yml         # MySQL 512M / Redis 192M / RabbitMQ 256M 内存限制
+                           # MySQL 关闭 performance-schema
+                           # Redis maxmemory 128M + allkeys-lru 策略
+docs/deployment.md         # 新增 swap 交换空间设置步骤
+```
+
+**效果：**
+
+| | 优化前 | 优化后 |
+|------|------|------|
+| Node 进程 | 4 个 | 2 个 |
+| Docker 内存 | ~1.2G 无限制 | ~1G 硬限制 |
+| 空闲 CPU | 100% | 降低 |
+
+---
+
+## 已知问题
+
+| # | 问题 | 原因 | 解决方案 | 状态 |
+|------|------|------|------|:--:|
 | 1 | 博客 HTTPS 无法加载 SDK HTTP 脚本 | Vercel 部署博客为 HTTPS，Pipeline 服务器仅 HTTP | 备案后再配 HTTPS | ⏳ 备案中 |
 | 2 | 服务器 git pull 偶尔超时 | GitHub 国内访问不稳定 | 已临时设 `git config http.version HTTP/1.1`，后续可迁 Gitee | 🔧 临时修复 |
 | 3 | 中文应用名显示乱码 | curl 创建时编码问题（非系统 bug） | 前端页面直接创建即可 | ✅ 已确认 |
