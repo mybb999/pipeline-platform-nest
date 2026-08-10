@@ -12,6 +12,7 @@ function createPool(configService: ConfigService, database: string): Pool {
     user: configService.get<string>('mysql.user'),
     password: configService.get<string>('mysql.password'),
     database,
+    timezone: 'Z',
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
