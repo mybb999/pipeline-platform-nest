@@ -13,7 +13,7 @@ export class ParserService {
 
   parseCity(ip: string): string {
     if (!ip || ip === 'unknown') return '未知';
-    if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.)/.test(ip)) {
+    if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|0\.|::1|fc|fe80)/i.test(ip)) {
       return '内网';
     }
     return '未知';
