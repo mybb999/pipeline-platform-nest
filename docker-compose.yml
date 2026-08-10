@@ -45,12 +45,11 @@ services:
       retries: 5
 
   rabbitmq:
-    image: rabbitmq:3-management-alpine
+    image: rabbitmq:3-alpine
     container_name: pipeline-rabbitmq
     restart: unless-stopped
     ports:
       - "5672:5672"
-      - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: pipeline
       RABBITMQ_DEFAULT_PASS: pipeline_dev_2024
