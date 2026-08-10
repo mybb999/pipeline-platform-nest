@@ -23,13 +23,13 @@ function render() {
   const uvs = props.data.map(d => d.uv)
 
   chart.setOption({
-    tooltip: { trigger: 'axis' },
-    legend: { data: ['PV', 'UV'] },
+    tooltip: { trigger: 'axis', formatter: (params: any[]) => params.map(p => `${p.seriesName}: ${p.value}`).join('<br/>') },
+    legend: { data: ['PV（页面浏览量）', 'UV（独立访客）'] },
     xAxis: { type: 'category', data: hours },
     yAxis: { type: 'value' },
     series: [
-      { name: 'PV', type: 'line', data: pvs, smooth: true },
-      { name: 'UV', type: 'line', data: uvs, smooth: true },
+      { name: 'PV（页面浏览量）', type: 'line', data: pvs, smooth: true },
+      { name: 'UV（独立访客）', type: 'line', data: uvs, smooth: true },
     ],
   })
 }
