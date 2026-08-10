@@ -39,3 +39,10 @@ function tagType(type: string) {
   }
 }
 </script>
+
+<style scoped>
+.realtime {
+  max-height: 400px;
+  overflow-y: auto;
+}
+</style>
