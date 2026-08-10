@@ -3,15 +3,15 @@ module.exports = {
     {
       name: 'server',
       script: './dist/src/main.js',
-      instances: 2,
-      exec_mode: 'cluster',
+      instances: 1,
+      exec_mode: 'fork',
       watch: false,
       env: { NODE_ENV: 'production', PORT: '3000' },
     },
     {
       name: 'worker',
       script: './dist/src/worker.js',
-      instances: 2,
+      instances: 1,
       exec_mode: 'fork',
       watch: false,
       env: { NODE_ENV: 'production' },

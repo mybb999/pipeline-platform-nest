@@ -16,6 +16,13 @@ apt update && apt install -y docker-ce docker-compose-plugin
 curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
 apt install -y nodejs git nginx
 npm install -g pm2
+
+# 2G 内存服务器建议加交换空间（防止编译时 OOM）
+fallocate -l 2G /swapfile
+chmod 600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+echo '/swapfile none swap sw 0 0' | tee -a /etc/fstab
 ```
 
 ### 2. 拉代码 + 启动数据库
