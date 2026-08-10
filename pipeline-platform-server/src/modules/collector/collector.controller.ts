@@ -2,12 +2,11 @@ import { Controller, Post, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { CollectorService } from './collector.service';
 import { CollectDto } from './dto/collect.dto';
-import { GatewayGuard } from './gateway.guard';
 import { ThrottlerGuard } from '@nestjs/throttler';
 
 @ApiTags('事件采集')
 @Controller('collect')
-@UseGuards(GatewayGuard, ThrottlerGuard)
+@UseGuards(ThrottlerGuard)
 export class CollectorController {
   constructor(private readonly collectorService: CollectorService) {}
 
