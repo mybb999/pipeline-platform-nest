@@ -28,9 +28,11 @@ export class LoaderService {
       const placeholders = rows.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
       const values: any[] = [];
       for (const r of rows) {
+        // MySQL DATETIME 不接受 Z 结尾，去掉
+        const createdAt = r.created_at.replace('T', ' ').replace('Z', '');
         values.push(
           r.app_id, r.event_type, r.url, r.ua, r.ip,
-          r.extra, r.device_type, r.city, r.page_path, r.created_at,
+          r.extra, r.device_type, r.city, r.page_path, createdAt,
         );
       }
 
