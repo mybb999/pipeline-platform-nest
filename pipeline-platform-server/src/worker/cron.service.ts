@@ -2,7 +2,9 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import Redlock, { ResourceLockedError, Lock } from 'redlock';
+import type { Logger } from 'winston';
 import { REDLOCK } from '../redis/redis.module';
+import { WINSTON_LOGGER } from '../common/logger/winston.module';
 import { AggregatorService } from './aggregator.service';
 import { CleanerService } from './cleaner.service';
 
@@ -10,6 +12,7 @@ import { CleanerService } from './cleaner.service';
 export class CronService {
   constructor(
     @Inject(REDLOCK) private readonly redlock: Redlock,
+    @Inject(WINSTON_LOGGER) private readonly logger: Logger,
     private readonly aggregator: AggregatorService,
     private readonly cleaner: CleanerService,
   ) {}
@@ -19,14 +22,14 @@ export class CronService {
     let lock: Lock | null = null;
     try {
       lock = await this.redlock.acquire(['lock:aggregator'], 120_000);
-      console.log('[cron] 开始聚合...');
+      this.logger.info('开始聚合...', { context: 'Cron' });
       await this.aggregator.aggregateLastHour();
     } catch (err: any) {
       if (err instanceof ResourceLockedError) {
         // 没抢到锁，其他 Worker 在执行
         return;
       }
-      console.error('[cron] 聚合失败:', err.message);
+      this.logger.error('聚合失败: ' + err.message, { context: 'Cron' });
     } finally {
       if (lock) {
         await lock.release().catch(() => {});
@@ -39,14 +42,14 @@ export class CronService {
     let lock: Lock | null = null;
     try {
       lock = await this.redlock.acquire(['lock:cleaner'], 300_000);
-      console.log('[cron] 开始清理...');
+      this.logger.info('开始清理...', { context: 'Cron' });
       await this.cleaner.cleanExpiredTables();
     } catch (err: any) {
       if (err instanceof ResourceLockedError) {
         // 没抢到锁，其他 Worker 在执行
         return;
       }
-      console.error('[cron] 清理失败:', err.message);
+      this.logger.error('清理失败: ' + err.message, { context: 'Cron' });
     } finally {
       if (lock) {
         await lock.release().catch(() => {});

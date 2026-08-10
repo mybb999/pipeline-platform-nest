@@ -204,6 +204,9 @@ pm2 status               # 查看进程状态
 pm2 logs                 # 实时日志
 pm2 restart all          # 重启全部进程
 pm2 stop all             # 停止全部进程
+pm2 install pm2-logrotate    # 安装日志轮转
+pm2 set pm2-logrotate:max_size 10M
+pm2 set pm2-logrotate:retain 7
 
 # Docker
 docker compose up -d rabbitmq  # 启动 RabbitMQ

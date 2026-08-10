@@ -7,6 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { DatabaseModule } from './database/database.module';
 import { RedisModule, REDIS_CLIENT } from './redis/redis.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { WinstonModule } from './common/logger/winston.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AppsModule } from './modules/apps/apps.module';
 import { CollectorModule } from './modules/collector/collector.module';
@@ -21,6 +22,7 @@ import type Redis from 'ioredis';
     DatabaseModule,
     RedisModule,
     PrismaModule,
+    WinstonModule,
     AuthModule,
     AppsModule,
     RabbitMQModule.forRootAsync({
