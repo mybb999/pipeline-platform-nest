@@ -1,5 +1,6 @@
 // ParserService — ETL 解析阶段：UA 设备识别、IP 内外网判断、URL 路径提取、extra 序列化
 import { Injectable } from '@nestjs/common';
+import * as geoip from 'geoip-lite';
 import { RawEvent, CleanedEvent } from '../../shared/types';
 
 @Injectable()
@@ -16,7 +17,8 @@ export class ParserService {
     if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|0\.|::1|::ffff|fc|fe80)/i.test(ip)) {
       return '内网';
     }
-    return '未知';
+    const geo = geoip.lookup(ip);
+    return geo?.city || '未知';
   }
 
   parsePath(url: string): string {
