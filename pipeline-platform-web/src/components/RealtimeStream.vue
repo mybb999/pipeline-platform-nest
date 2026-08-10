@@ -2,7 +2,11 @@
   <div class="realtime">
     <el-empty v-if="events.length === 0" description="暂无实时事件" :image-size="80" />
     <el-table v-else :data="events" stripe size="small">
-      <el-table-column prop="created_at" label="时间" width="180" />
+      <el-table-column label="时间" width="180">
+        <template #default="{ row }">
+          {{ formatTime(row.created_at) }}
+        </template>
+      </el-table-column>
       <el-table-column prop="event_type" label="类型" width="120">
         <template #default="{ row }">
           <el-tag :type="tagType(row.event_type)" size="small">{{ row.event_type }}</el-tag>
@@ -19,6 +23,12 @@
 interface EventRow { event_type: string; url: string; device_type: string; city: string; created_at: string }
 
 defineProps<{ events: EventRow[] }>()
+
+function formatTime(iso: string) {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
 
 function tagType(type: string) {
   switch (type) {
