@@ -25,9 +25,10 @@ interface EventRow { event_type: string; url: string; device_type: string; city:
 defineProps<{ events: EventRow[] }>()
 
 function formatTime(iso: string) {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  return new Date(iso).toLocaleString('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    hour12: false,
+  });
 }
 
 function tagType(type: string) {
