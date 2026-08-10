@@ -25,17 +25,17 @@ export class LoaderService {
     for (const [table, rows] of Object.entries(groups)) {
       await this.db.query(`CREATE TABLE IF NOT EXISTS \`${table}\` LIKE events_template`);
 
-      const placeholders = rows.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+      const placeholders = rows.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
       const values: any[] = [];
       for (const r of rows) {
         values.push(
           r.app_id, r.event_type, r.url, r.ua, r.ip,
-          r.extra, r.device_type, r.city, r.page_path,
+          r.extra, r.device_type, r.city, r.page_path, r.created_at,
         );
       }
 
       await this.db.query(
-        `INSERT INTO \`${table}\` (app_id, event_type, url, ua, ip, extra, device_type, city, page_path) VALUES ${placeholders}`,
+        `INSERT INTO \`${table}\` (app_id, event_type, url, ua, ip, extra, device_type, city, page_path, created_at) VALUES ${placeholders}`,
         values,
       );
       total += rows.length;
