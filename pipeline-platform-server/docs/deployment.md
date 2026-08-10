@@ -52,16 +52,16 @@ EOF
 ### 4. 安装依赖 + 编译
 
 ```bash
-# 后端
+# 后端（国内用镜像加速）
 cd /opt/pipeline-platform-nest/pipeline-platform-server
-npm install
+npm install --registry=https://registry.npmmirror.com
 npx prisma generate
 npm run build
 npm run build:sdk
 
 # 前端
 cd /opt/pipeline-platform-nest/pipeline-platform-web
-npm install
+npm install --registry=https://registry.npmmirror.com
 npm run build
 ```
 
@@ -124,8 +124,8 @@ REMOTE=$(git rev-parse origin/master)
 if [ "$LOCAL" != "$REMOTE" ]; then
   echo "[deploy] $(date) 检测到新提交"
   git pull origin master
-  cd pipeline-platform-server && npm install && npx prisma generate && npm run build && npm run build:sdk
-  cd ../pipeline-platform-web && npm install && npm run build
+  cd pipeline-platform-server && npm install --registry=https://registry.npmmirror.com && npx prisma generate && npm run build && npm run build:sdk
+  cd ../pipeline-platform-web && npm install --registry=https://registry.npmmirror.com && npm run build
   pm2 restart all
   echo "[deploy] 完成"
 fi
@@ -155,14 +155,14 @@ git pull origin master
 
 # 2. 编译后端
 cd pipeline-platform-server
-npm install
+npm install --registry=https://registry.npmmirror.com
 npx prisma generate
 npm run build
 npm run build:sdk
 
 # 3. 编译前端
 cd ../pipeline-platform-web
-npm install
+npm install --registry=https://registry.npmmirror.com
 npm run build
 
 # 4. 重启服务
@@ -184,7 +184,8 @@ cd /opt/pipeline-platform-nest/pipeline-platform-server
 npm run build
 
 # 3. 启动 PM2
-pm2 delete all
+pm2 kill                  # 彻底停止（推荐，清残留进程）
+# 或 pm2 delete all       # 从列表删除
 pm2 start ecosystem.config.cjs
 pm2 save
 
