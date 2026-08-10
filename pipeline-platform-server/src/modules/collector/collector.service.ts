@@ -9,10 +9,11 @@ const ROUTING_KEY = 'event.collect';
 export class CollectorService {
   constructor(private readonly amqp: AmqpConnection) {}
 
-  async pushToQueue(appKey: string, events: IncomingEvent[]): Promise<number> {
+  async pushToQueue(appKey: string, events: IncomingEvent[], ip?: string): Promise<number> {
     for (const event of events) {
       this.amqp.publish(EXCHANGE, ROUTING_KEY, {
         ...event,
+        ip: ip || event.ip,
         app_key: appKey,
         created_at: new Date().toISOString(),
       });

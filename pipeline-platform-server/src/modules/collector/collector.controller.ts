@@ -1,5 +1,6 @@
-import { Controller, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { Request } from 'express';
 import { CollectorService } from './collector.service';
 import { CollectDto } from './dto/collect.dto';
 import { ThrottlerGuard } from '@nestjs/throttler';
@@ -12,8 +13,9 @@ export class CollectorController {
 
   @ApiOperation({ summary: '上报事件' })
   @Post()
-  async collect(@Body() dto: CollectDto) {
-    const queueLength = await this.collectorService.pushToQueue(dto.appKey, dto.events);
+  async collect(@Body() dto: CollectDto, @Req() req: Request) {
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip;
+    const queueLength = await this.collectorService.pushToQueue(dto.appKey, dto.events, ip);
     return { received: dto.events.length, queue_length: queueLength };
   }
 }
