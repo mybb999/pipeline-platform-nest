@@ -21,7 +21,10 @@ export class StatsService {
        ORDER BY hour ASC`,
       [appId, since],
     );
-    return rows as PvSummary[];
+    return (rows as any[]).map((row) => ({
+      ...row,
+      hour: new Date(row.hour).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false }).slice(0, -3), // YYYY/MM/DD HH:mm
+    }));
   }
 
   async getDeviceDistribution(appId: number): Promise<DeviceDistribution[]> {
