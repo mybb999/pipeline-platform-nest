@@ -600,7 +600,7 @@ pm2 restart all
 |------|------|------|------|:--:|
 | 1 | 消息队列 | Redis RPUSH/LPOP | RabbitMQ | ✅ 已完成 |
 | 2 | 分布式锁 | 手写 SET NX | Redlock 库 | ✅ 已完成 |
-| 3 | 日志系统 | `console.log` | Winston / Pino | 中 |
+| 3 | 日志系统 | `console.log` | Winston | ✅ 已完成 |
 | 4 | 单元测试 | 无 | Jest 覆盖核心模块 | 中 |
 | 5 | ORM 统一 | 部分 Prisma + 部分 mysql2 | 全量 Prisma | 低 |
 | 6 | HTTPS | 无 | Let's Encrypt 免费证书 | 备案后 |
@@ -668,10 +668,6 @@ npm run worker          # Worker 消费者正常接收
 
 ---
 
-## 已知问题
-
-| # | 问题 | 原因 | 解决方案 | 状态 |
-|------|------|------|------|:--:|
 ### Task 19 — 2核2G 资源优化
 
 **目标：** 适配低配服务器，降低 CPU/内存占用。
@@ -692,6 +688,36 @@ docs/deployment.md         # 新增 swap 交换空间设置步骤
 | Node 进程 | 4 个 | 2 个 |
 | Docker 内存 | ~1.2G 无限制 | ~1G 硬限制 |
 | 空闲 CPU | 100% | 降低 |
+
+### Task 20 — Winston 日志系统
+
+**目标：** 将 `console.log` 替换为 Winston 结构化日志，输出到文件并自动轮转。
+
+**新建文件：**
+```
+src/common/logger/winston.module.ts   # @Global() 全局日志模块
+```
+
+**修改文件：**
+```
+src/app.module.ts                      # 注册 WinstonModule
+src/worker/cron.service.ts             # console.log → this.logger.info/error
+docs/deployment.md                     # pm2-logrotate 日志轮转配置
+```
+
+**Winston 配置：**
+- 终端：彩色格式，级别 info
+- 文件：`logs/error.log`（仅错误）+ `logs/combined.log`（全量）
+- 自动轮转：单文件 10M，保留 7 天
+
+**PM2 日志轮转：**
+```bash
+pm2 install pm2-logrotate
+pm2 set pm2-logrotate:max_size 10M
+pm2 set pm2-logrotate:retain 7
+```
+
+> CronService 是第一个改造的模块，后续可逐步将其他 `console.log` 替换为 Winston。
 
 ---
 
