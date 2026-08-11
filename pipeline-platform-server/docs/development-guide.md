@@ -678,6 +678,9 @@ ecosystem.config.cjs       # server/worker 各减为 1 个 fork 进程
 docker-compose.yml         # MySQL 512M / Redis 192M / RabbitMQ 256M 内存限制
                            # MySQL 关闭 performance-schema
                            # Redis maxmemory 128M + allkeys-lru 策略
+                           # RabbitMQ 去掉 management 面板（节省 ~50M 内存）
+                           #   image: rabbitmq:3-alpine（非 -management）
+                           #   仅保留 5672 端口，去掉 15672 Web UI
 docs/deployment.md         # 新增 swap 交换空间设置步骤
 ```
 
