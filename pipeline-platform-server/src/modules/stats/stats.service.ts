@@ -67,8 +67,11 @@ export class StatsService {
         allRows.push(...rows);
         this.logger.info(`实时事件查询 ${table}: ${rows.length} 条`, { context: 'Stats' });
       } catch (err: any) {
-        // 表不存在则跳过，但记录真实错误便于排查
-        this.logger.error(`实时事件查询 ${table} 失败: ${err?.message}`, { context: 'Stats' });
+        // 表不存在（MySQL 错误码 1149）是预期情况，静默跳过；其他错误才记日志
+        const isMissingTable = err?.errno === 1149 || /doesn't exist/i.test(err?.message || '');
+        if (!isMissingTable) {
+          this.logger.error(`实时事件查询 ${table} 失败: ${err?.message}`, { context: 'Stats' });
+        }
       }
     }
 
