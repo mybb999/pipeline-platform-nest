@@ -6,6 +6,7 @@ import { ConfigModule } from '../config/config.module';
 import { ConfigService } from '@nestjs/config';
 import { DatabaseModule } from '../database/database.module';
 import { RedisModule } from '../redis/redis.module';
+import { WinstonModule } from '../common/logger/winston.module';
 import { ParserService } from './etl/parser.service';
 import { LoaderService } from './etl/loader.service';
 import { AggregatorService } from './aggregator.service';
@@ -18,6 +19,7 @@ import { EventConsumer } from './event.consumer';
     ConfigModule,
     DatabaseModule,
     RedisModule,
+    WinstonModule,
     ScheduleModule.forRoot(),
     RabbitMQModule.forRootAsync({
       imports: [ConfigModule],
