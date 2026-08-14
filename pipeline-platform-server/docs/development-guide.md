@@ -526,6 +526,7 @@ npm run dev             # 启动后调用注册/登录/创建应用 API，功能
 
 | 项目 | 值 |
 |------|-----|
+| 访问地址 | https://pipeline.ai-myhome.space |
 | 公网 IP | 120.25.122.243 |
 | 域名 | pipeline.ai-myhome.space |
 | 系统 | Ubuntu 22.04 |
@@ -568,7 +569,7 @@ pm2 restart all
 | 13 | `npm run build:sdk` 成功输出 `sdk-dist/sdk.js` |
 | 14 | 浏览器打开 `/api/docs` 看到 Swagger 页面 |
 | 15 | `npx prisma generate` 成功 + `npx tsc --noEmit` 编译通过 |
-| 16 | `curl http://120.25.122.243/api/health` 返回健康状态 |
+| 16 | `curl https://pipeline.ai-myhome.space/api/health` 返回健康状态 |
 
 ---
 

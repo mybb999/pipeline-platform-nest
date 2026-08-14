@@ -106,10 +106,24 @@ nginx -t && systemctl restart nginx
 
 ### 7. 阿里云控制台
 
-- 安全组放开 80 端口（0.0.0.0/0）
-- DNS：A 记录 `pipeline.ai-myhome.space` → 服务器公网 IP
+- 防火墙/安全组放开 80 和 443 端口（0.0.0.0/0）
+- DNS：A 记录 `pipeline.ai-myhome.space` → 服务器公网 IP（域名需先完成 ICP 备案）
 
-### 8. 自动化部署（Cron 定时检查）
+### 8. HTTPS 证书（Let's Encrypt）
+
+```bash
+apt install -y certbot python3-certbot-nginx
+certbot --nginx -d pipeline.ai-myhome.space
+```
+
+- 按提示输入邮箱并同意条款，成功后 Nginx 会自动加上 SSL 配置和 HTTP→HTTPS 跳转
+- 证书有效期 90 天，certbot 的 systemd 定时器会自动续期
+- 验证自动续期：`certbot renew --dry-run`
+- 验证访问：`curl https://pipeline.ai-myhome.space/api/health`
+
+> 如果 HTTPS 访问超时，先检查防火墙是否放行了 443 端口。
+
+### 9. 自动化部署（Cron 定时检查）
 
 服务器每分钟检查 GitHub 是否有新提交，有则自动拉取编译重启：
 
