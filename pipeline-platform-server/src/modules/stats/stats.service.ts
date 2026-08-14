@@ -1,6 +1,8 @@
 import { Injectable, Inject } from '@nestjs/common';
 import type { Pool } from 'mysql2/promise';
+import type { Logger } from 'winston';
 import { DATABASE_STATS, DATABASE_LOG } from '../../database/database.constants';
+import { WINSTON_LOGGER } from '../../common/logger/winston.module';
 import { PvSummary, DeviceDistribution } from '../../shared/types';
 
 @Injectable()
@@ -8,6 +10,7 @@ export class StatsService {
   constructor(
     @Inject(DATABASE_STATS) private readonly statsDb: Pool,
     @Inject(DATABASE_LOG) private readonly logDb: Pool,
+    @Inject(WINSTON_LOGGER) private readonly logger: Logger,
   ) {}
 
   async getPvTrend(appId: number, rangeDays: number): Promise<PvSummary[]> {
@@ -62,8 +65,10 @@ export class StatsService {
           [appId],
         );
         allRows.push(...rows);
-      } catch {
-        // 表不存在则跳过
+        this.logger.info(`实时事件查询 ${table}: ${rows.length} 条`, { context: 'Stats' });
+      } catch (err: any) {
+        // 表不存在则跳过，但记录真实错误便于排查
+        this.logger.error(`实时事件查询 ${table} 失败: ${err?.message}`, { context: 'Stats' });
       }
     }
 
