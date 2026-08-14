@@ -412,6 +412,7 @@ while(true) {
   ① batchPop('event:queue', 200)  // Lua 原子批量 LPOP
   ② 队列为空？→ sleep(1s)
   ③ Parser.cleanEvent()           // UA→设备 / IP→城市 / URL→路径
+     （IP→城市用 ip2region 离线库，国内 IP 精度高于 GeoLite2）
   ④ resolveAppIds()               // 批量 app_key → app_id
   ⑤ Loader.batchLoad()            // 按日期分表 → INSERT
 }
@@ -729,6 +730,6 @@ pm2 set pm2-logrotate:retain 7
 
 | # | 问题 | 原因 | 解决方案 | 状态 |
 |------|------|------|------|:--:|
-| 1 | 博客 HTTPS 无法加载 SDK HTTP 脚本 | Vercel 部署博客为 HTTPS，Pipeline 服务器仅 HTTP | 备案后再配 HTTPS | ⏳ 备案中 |
+| 1 | 博客 HTTPS 无法加载 SDK HTTP 脚本 | Vercel 部署博客为 HTTPS，Pipeline 服务器仅 HTTP | 备案完成后配 HTTPS（certbot），SDK 地址改为 https 域名 | ✅ 已解决（2026-08-14） |
 | 2 | 服务器 git pull 偶尔超时 | GitHub 国内访问不稳定 | 已临时设 `git config http.version HTTP/1.1`，后续可迁 Gitee | 🔧 临时修复 |
 | 3 | 中文应用名显示乱码 | curl 创建时编码问题（非系统 bug） | 前端页面直接创建即可 | ✅ 已确认 |
