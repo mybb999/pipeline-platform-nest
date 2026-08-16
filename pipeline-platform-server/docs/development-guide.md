@@ -733,3 +733,35 @@ pm2 set pm2-logrotate:retain 7
 | 1 | 博客 HTTPS 无法加载 SDK HTTP 脚本 | Vercel 部署博客为 HTTPS，Pipeline 服务器仅 HTTP | 备案完成后配 HTTPS（certbot），SDK 地址改为 https 域名 | ✅ 已解决（2026-08-14） |
 | 2 | 服务器 git pull 偶尔超时 | GitHub 国内访问不稳定 | 已临时设 `git config http.version HTTP/1.1`，后续可迁 Gitee | 🔧 临时修复 |
 | 3 | 中文应用名显示乱码 | curl 创建时编码问题（非系统 bug） | 前端页面直接创建即可 | ✅ 已确认 |
+
+---
+
+## 后续规划（待办）
+
+> 2026-08-16 整理，作为下一步开发/运维的清单。
+
+### 运维与安全
+
+| # | 任务 | 说明 | 优先级 |
+|---|------|------|:--:|
+| P1 | 数据库备份 | MySQL 目前无备份机制，建议每日凌晨 mysqldump 到备份目录 + 自动清理 7 天前的备份（cron 或 docker 定时容器） | 高 |
+| P2 | root 密码加固 | 当前 `root_dev_2024` 为弱密码；改强密码后需同步更新 `.env`、`docker-compose.yml`、`DATABASE_URL` | 高 |
+| P3 | viewer 只读账号 | DBeaver 等 GUI 工具用只读账号连接（权限隔离），避免误操作 | 中 |
+| P4 | 服务器 git HTTP/2 抖动 | 重启后 `git config --global http.version HTTP/1.1` 可能丢失，需重新验证 | 中 |
+| P5 | 证书自动续期验证 | 运行 `certbot renew --dry-run` 确认续期定时器正常 | 中 |
+
+### 验证与质量
+
+| # | 任务 | 说明 | 优先级 |
+|---|------|------|:--:|
+| Q1 | 数据观察期 | 系统跑几天真实数据，观察：整点聚合（每时 05 分）、PV/UV 趋势、设备分布、城市解析（ip2region） | 中 |
+| Q2 | Jest 单元测试 | 项目目前零测试。优先覆盖纯逻辑：Parser（UA 设备识别/城市解析/内网判断）、shard（表名生成） | 中 |
+| Q3 | 错误日志巡检 | 观察 Winston error.log 是否只有真实错误（已降噪「表不存在」） | 低 |
+
+### 功能规划
+
+| # | 任务 | 说明 | 优先级 |
+|---|------|------|:--:|
+| F1 | AI Agent 智能体 | 重头戏：LangChain + RAG + LLM，用户向智能体提问了解个人工作经历与技能栈。涉及向量库、Embedding、LLM API 选型、阿里云服务器配置评估 | 高 |
+| F2 | 博客留言板修复 | `message-board-pi-pearl.vercel.app` 后端不可用，暂缓 | 低 |
+| F3 | ip2region 数据更新 | 库文件随 npm 包版本更新，暂够用，长期可考虑定期 updatedb | 低 |
