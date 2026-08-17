@@ -748,7 +748,7 @@ pm2 set pm2-logrotate:retain 7
 | P2 | root 密码加固 | 当前 `root_dev_2024` 为弱密码；改强密码后需同步更新 `.env`、`docker-compose.yml`、`DATABASE_URL` | 高 |
 | P3 | viewer 只读账号 | DBeaver 等 GUI 工具用只读账号连接（权限隔离），避免误操作 | 中 |
 | P4 | 服务器 git HTTP/2 抖动 | 重启后 `git config --global http.version HTTP/1.1` 可能丢失，需重新验证 | 中 |
-| P5 | 证书自动续期验证 | 运行 `certbot renew --dry-run` 确认续期定时器正常 | 中 |
+| P5 | 证书自动续期验证 | ✅ 已验证（2026-08-16）：certbot.timer 运行中 + dry-run 成功 | 中 |
 
 ### 验证与质量
 
