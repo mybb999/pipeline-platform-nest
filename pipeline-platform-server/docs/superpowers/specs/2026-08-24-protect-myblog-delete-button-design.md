@@ -30,7 +30,9 @@
 
 维护说明：若演示应用改名或更换演示账号，需同步更新 `PROTECTED_APP` 常量。
 
-### 改动点（仅 `pipeline-platform-web/src/pages/AppManage.vue` 一个文件）
+### 改动点（`pipeline-platform-web/src/pages/AppManage.vue` + `src/stores/auth.ts` 两个文件）
+
+0. **前置修复（stores/auth.ts）**：`user` 状态原先只存内存，页面刷新后丢失，会导致保护判断失效。改为持久化到 localStorage：初始化时从 `localStorage.getItem('user')` 恢复，`setAuth` 时写入，`logout` 时清除。顺带修复布局栏邮箱显示刷新后丢失的既有问题。
 
 1. 文件顶部定义常量：
 
@@ -71,10 +73,11 @@
 ## 验证
 
 1. `npm run build`（vue-tsc 类型检查 + vite 构建）通过。
-2. 手动验证（`npm run dev`）：
-   - test@test.com 登录 → `Myblog` 行按钮置灰、悬停显示"演示应用不可删除"、点击无反应。
-   - 同账号下其他应用可正常弹确认框并删除。
-   - 其他账号登录 → 列表正常，名为 Myblog 的应用（若有）可正常删除。
+2. 浏览器实测（Chrome + puppeteer，本地副本数据 test@test.com/Myblog），全部通过：
+   - test@test.com 登录 → `Myblog` 行按钮 `disabled=true`、悬停显示"演示应用不可删除"、强制点击无 DELETE 请求发出。
+   - **F5 刷新后** → `Myblog` 行按钮仍 `disabled=true`（依赖 stores/auth.ts 的 user 持久化修复）。
+   - 同账号其他应用 → 按钮正常，点击弹出"确定删除该应用？"确认框。
+   - other@test.com 登录 → 其名下的 Myblog 按钮正常可删。
 
 ## 测试
 

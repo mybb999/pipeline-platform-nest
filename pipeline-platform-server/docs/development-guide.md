@@ -261,6 +261,10 @@ src/modules/apps/
 DELETE FROM apps WHERE id = ? AND user_id = ?
 ```
 
+**前端演示保护：**
+`test@test.com` 账号下 `Myblog` 应用的前端删除按钮已禁用（置灰 + 悬停提示，仅前端；依赖 auth store 的 user 持久化）。
+设计见 `docs/superpowers/specs/2026-08-24-protect-myblog-delete-button-design.md`。
+
 ---
 
 ### Task 9 — Collector 模块（事件采集）

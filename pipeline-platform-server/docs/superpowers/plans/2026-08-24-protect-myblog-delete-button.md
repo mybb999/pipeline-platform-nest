@@ -18,6 +18,59 @@
 
 ---
 
+> **执行记录（2026-08-25）：** 浏览器实测发现 `useAuthStore.user` 仅存内存、页面刷新后丢失，导致保护失效（F5 即可解锁删除按钮）。已按 Task 0 补修并经浏览器复验通过。
+
+### Task 0: stores/auth.ts 持久化 user（执行中发现的前置修复）
+
+**Files:**
+- Modify: `pipeline-platform-web/src/stores/auth.ts`
+
+**Interfaces:**
+- Produces: `useAuthStore().user` 在页面刷新后仍可从 localStorage 恢复（JSON 序列化的 `{ id, email } | null`）
+
+- [ ] **Step 1: 修改 store**
+
+```ts
+export const useAuthStore = defineStore('auth', () => {
+  const token = ref(localStorage.getItem('token') || '')
+  // user 需持久化：页面刷新后从 localStorage 恢复，否则依赖登录态的判断（如 AppManage 删除保护）会失效
+  const user = ref<{ id: number; email: string } | null>(
+    JSON.parse(localStorage.getItem('user') || 'null')
+  )
+
+  function setAuth(t: string, u: { id: number; email: string }) {
+    token.value = t
+    user.value = u
+    localStorage.setItem('token', t)
+    localStorage.setItem('user', JSON.stringify(u))
+  }
+
+  function logout() {
+    token.value = ''
+    user.value = null
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+  }
+
+  function isLoggedIn() {
+    return !!token.value
+  }
+
+  return { token, user, setAuth, logout, isLoggedIn }
+})
+```
+
+- [ ] **Step 2: 构建验证**
+
+Run: `cd f:/AIproject/pipeline-platform-nest/pipeline-platform-web && npm run build`
+Expected: 无类型错误
+
+- [ ] **Step 3: 浏览器复验**（登录 → SPA 导航到应用管理 → 刷新 → 重新断言按钮状态）
+
+Expected: Myblog 行按钮在登录后与 F5 刷新后均 `disabled=true`，其他账号登录时 `disabled=false`。
+
+---
+
 ### Task 1: AppManage.vue 增加保护逻辑与模板分支
 
 **Files:**
