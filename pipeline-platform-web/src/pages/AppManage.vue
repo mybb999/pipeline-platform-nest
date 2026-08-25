@@ -56,7 +56,7 @@ interface AppInfo { id: number; name: string; app_key: string; status: number; c
 
 // 受保护的演示应用：该账号下此名称的应用不允许在前端删除
 // 详见 pipeline-platform-server/docs/superpowers/specs/2026-08-24-protect-myblog-delete-button-design.md
-const PROTECTED_APP = { email: 'test@test.com', name: 'Myblog' }
+const PROTECTED_APP = { email: 'test@test.com', name: 'MyBlog' }
 
 const name = ref('')
 const domain = ref('')
@@ -66,8 +66,10 @@ const loading = ref(false)
 
 const authStore = useAuthStore()
 
+// 名称比较不区分大小写，防止实际应用名大小写漂移导致保护失效
 const isProtectedApp = (row: AppInfo) =>
-  authStore.user?.email === PROTECTED_APP.email && row.name === PROTECTED_APP.name
+  authStore.user?.email === PROTECTED_APP.email &&
+  row.name.toLowerCase() === PROTECTED_APP.name.toLowerCase()
 
 onMounted(() => fetchApps())
 

@@ -8,7 +8,7 @@
 
 ## 目标
 
-- `test@test.com` 账号登录时，应用列表中名称为 `Myblog` 的应用，删除按钮置灰禁用，悬停提示"演示应用不可删除"。
+- `test@test.com` 账号登录时，应用列表中名称为 `MyBlog` 的应用（服务器上真实名称，大小写不敏感匹配），删除按钮置灰禁用，悬停提示"演示应用不可删除"。
 - 其他账号、其他应用完全不受影响。
 
 ## 范围
@@ -24,11 +24,11 @@
 同时满足两个条件才禁用：
 
 1. 当前登录用户 `email === 'test@test.com'`（来自 `useAuthStore` 的 `user.email`）
-2. 应用行数据 `name === 'Myblog'`（来自 `GET /apps` 列表响应）
+2. 应用行数据 `name` 与 `'MyBlog'` 大小写不敏感相等（来自 `GET /apps` 列表响应）
 
 用 email + name 双重匹配：只有演示账号自己登录时才生效，其他账号的同名应用不受影响。
 
-维护说明：若演示应用改名或更换演示账号，需同步更新 `PROTECTED_APP` 常量。
+维护说明：若演示应用改名或更换演示账号，需同步更新 `PROTECTED_APP` 常量。名称比较已做大小写不敏感处理（服务器上真实名称为 `MyBlog`，2026-08-26 实测曾因大小写不匹配导致保护未生效）。
 
 ### 改动点（`pipeline-platform-web/src/pages/AppManage.vue` + `src/stores/auth.ts` 两个文件）
 
@@ -38,7 +38,7 @@
 
    ```ts
    // 受保护的演示应用：该账号下此名称的应用不允许在前端删除
-   const PROTECTED_APP = { email: 'test@test.com', name: 'Myblog' }
+   const PROTECTED_APP = { email: 'test@test.com', name: 'MyBlog' }
    ```
 
 2. 引入 `useAuthStore`，新增判断函数：
@@ -73,8 +73,8 @@
 ## 验证
 
 1. `npm run build`（vue-tsc 类型检查 + vite 构建）通过。
-2. 浏览器实测（Chrome + puppeteer，本地副本数据 test@test.com/Myblog），全部通过：
-   - test@test.com 登录 → `Myblog` 行按钮 `disabled=true`、悬停显示"演示应用不可删除"、强制点击无 DELETE 请求发出。
+2. 浏览器实测（Chrome + puppeteer，本地副本数据 test@test.com/MyBlog），全部通过：
+   - test@test.com 登录 → `MyBlog` 行按钮 `disabled=true`、悬停显示"演示应用不可删除"、强制点击无 DELETE 请求发出。
    - **F5 刷新后** → `Myblog` 行按钮仍 `disabled=true`（依赖 stores/auth.ts 的 user 持久化修复）。
    - 同账号其他应用 → 按钮正常，点击弹出"确定删除该应用？"确认框。
    - other@test.com 登录 → 其名下的 Myblog 按钮正常可删。
