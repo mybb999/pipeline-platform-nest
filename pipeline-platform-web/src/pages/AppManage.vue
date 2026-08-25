@@ -29,7 +29,12 @@
         <el-table-column prop="created_at" label="创建时间" width="180" />
         <el-table-column label="操作" width="120">
           <template #default="{ row }">
-            <el-popconfirm title="确定删除该应用？" @confirm="handleDelete(row.id)">
+            <el-tooltip v-if="isProtectedApp(row)" content="演示应用不可删除" placement="top">
+              <span>
+                <el-button type="danger" size="small" disabled>删除</el-button>
+              </span>
+            </el-tooltip>
+            <el-popconfirm v-else title="确定删除该应用？" @confirm="handleDelete(row.id)">
               <template #reference>
                 <el-button type="danger" size="small">删除</el-button>
               </template>
@@ -45,14 +50,24 @@
 import { ref, onMounted } from 'vue'
 import { createApp, listApps, deleteApp } from '../api/app'
 import { ElMessage } from 'element-plus'
+import { useAuthStore } from '../stores/auth'
 
 interface AppInfo { id: number; name: string; app_key: string; status: number; created_at: string }
+
+// 受保护的演示应用：该账号下此名称的应用不允许在前端删除
+// 详见 pipeline-platform-server/docs/superpowers/specs/2026-08-24-protect-myblog-delete-button-design.md
+const PROTECTED_APP = { email: 'test@test.com', name: 'Myblog' }
 
 const name = ref('')
 const domain = ref('')
 const apps = ref<AppInfo[]>([])
 const creating = ref(false)
 const loading = ref(false)
+
+const authStore = useAuthStore()
+
+const isProtectedApp = (row: AppInfo) =>
+  authStore.user?.email === PROTECTED_APP.email && row.name === PROTECTED_APP.name
 
 onMounted(() => fetchApps())
 
