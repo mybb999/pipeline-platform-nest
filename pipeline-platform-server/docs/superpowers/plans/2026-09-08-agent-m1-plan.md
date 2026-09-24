@@ -1,5 +1,39 @@
 # AImyhome 博客 AI Agent 升级 · M1 实施计划
 
+## 📋 进度板(人话版,给人和面试官看)
+
+> 下面是施工细节;这一节是「现在到哪了」,每完成一步就更新勾选。
+
+**这项目是干嘛的**:访客在博客问「熊仔做过什么」,Agent 回答并附出处。底层四件事:简历切片 → 存成向量 → 搜索 → 大模型生成回答。
+
+**任务清单**:
+
+- [x] **Task 1 环境**:Python + uv + 服务器 Docker + pgvector + SSH 隧道
+- [x] **Task 2 骨架**:FastAPI + /health,测试跑通
+- [x] **Task 3 知识源**:profile.md(新版简历已同步)
+- [x] **Task 4 切片**:Markdown 两段式切片 + embedding 双写(豆包/智谱)
+- [x] **Task 5 入库检索**:真库灌入 18 块,检索 + 自动降级(阈值 0.25)
+- [x] **Task 5.5 混合检索**:向量 + 关键词(pg_trgm)两路召回,RRF 融合(标定集 13/13)
+- [ ] **Task 6 大脑**:LangGraph 工具调用循环 ← **当前正在做**
+- [ ] **Task 7 接口**:SSE 流式输出,博客转发
+- [ ] **Task 8 前端**:回答里显示来源
+- [ ] **Task 9 上线**:部署腾讯云
+
+**当前进度**:Task 5(`2915e7c`)、Task 5.5(`68b48b8`)已提交,均未 push。下一步 Task 6。
+
+**技术栈一句话**:Python + FastAPI(接口)+ LangGraph(编排)+ pgvector(向量检索)+ 豆包/智谱(大模型与 embedding)
+
+**已知遗留**:
+- 智谱欠费,降级表 chunks_zhipu 为空 —— 充值后重灌即可
+- 「最近在哪家公司」这类时间问题,留给 Task 6 的 Agent 推理解决
+
+**Task 5.5 要点**(详细 spec 已并入本节,原独立文档删除):
+- 两路召回:向量路(语义)+ pg_trgm 关键词路(字面),RRF 融合,并列时关键词优先
+- `word_similarity(短问, 长文)` 参数顺序不能反,反了分数永远趋近 0(真库标定集抓出来的)
+- 验收:标定集 13 题(专有名词 5 题 jsPlumb/HZero/ip2region/OnlyOffice/Wepy + 原 8 题)全过
+
+---
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 把博客的纯聊天助手升级为「懂我的助手」—— 访客问熊仔(刘俊雄)的简历资料,Agent 检索 pgvector 知识库后流式回答,答案附来源引用。
