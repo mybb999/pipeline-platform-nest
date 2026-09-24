@@ -27,6 +27,18 @@
 - 智谱欠费,降级表 chunks_zhipu 为空 —— 充值后重灌即可
 - 「最近在哪家公司」这类时间问题,留给 Task 6 的 Agent 推理解决
 
+**Agent 相关文档索引**(全部在本仓库 `pipeline-platform-server/docs/superpowers/`):
+
+| 文件 | 是什么 |
+|---|---|
+| plans/2026-09-08-agent-m1-plan.md | **总计划**(本文件,含进度板)—— 唯一在执行的一份 |
+| plans/2026-09-08-m1-agent-profile-rag.md | 早期版本,已存档,勿再按它执行 |
+| plans/2026-06-10-ai-agent.md | 第一版 Agent 计划(历史) |
+| plans/2026-08-26-multi-model-agent.md | 多模型改造计划(历史) |
+| specs/2026-09-08-ai-agent-upgrade-design.md | M1 升级**设计文档**(定稿,方案与决策记录) |
+| specs/2026-06-10-ai-agent-design.md | 第一版设计(历史) |
+| specs/2026-08-26-multi-model-agent-design.md | 多模型改造设计(历史) |
+
 **Task 5.5 要点**(详细 spec 已并入本节,原独立文档删除):
 - 两路召回:向量路(语义)+ pg_trgm 关键词路(字面),RRF 融合,并列时关键词优先
 - `word_similarity(短问, 长文)` 参数顺序不能反,反了分数永远趋近 0(真库标定集抓出来的)
