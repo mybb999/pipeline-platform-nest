@@ -50,7 +50,7 @@
 
 **Tech Stack:** Python 3.12 + uv、FastAPI、LangGraph(经典工具调用循环)、langchain-openai、httpx、psycopg 3、pgvector(HNSW 索引)、pytest;博客侧 Nuxt 3。
 
-**设计依据:** 完整方案与决策记录见 `AImyhome/docs/2026-09-08-ai-agent-upgrade-design.md`(定稿)。本计划比 spec 更精确的两处:**embedding 方案 A 双写+自动降级**(主豆包 doubao-embedding-vision 1024 维 / 降级智谱 embedding-3 2048 维,一表一模型,故障才降级、空结果不降级);**pgvector 开发期直接连新购服务器的 Docker**(SSH 隧道)。
+**设计依据:** 完整方案与决策记录见本仓库 `docs/superpowers/specs/2026-09-08-ai-agent-upgrade-design.md`(定稿,2026-09-25 从 AImyhome 仓库收编)。本计划比 spec 更精确的两处:**embedding 方案 A 双写+自动降级**(主豆包 doubao-embedding-vision 1024 维 / 降级智谱 embedding-3 2048 维,一表一模型,故障才降级、空结果不降级);**pgvector 开发期直接连新购服务器的 Docker**(SSH 隧道)。
 
 ## Global Constraints
 
