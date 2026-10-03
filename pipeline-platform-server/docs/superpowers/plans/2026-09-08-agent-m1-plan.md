@@ -18,8 +18,9 @@
 - [x] **Task 7 接口**:SSE 流式输出,博客转发(端到端验证通过)
 - [x] **Task 8 前端**:回答里显示来源(📎 参考资料块,列出「文件 · 章节」)
 - [x] **Task 9 上线**:部署腾讯云(线上验证通过)
+- [x] **Task 9.5 自动部署**:cron 定时拉取(每 5 分钟),有更新才 pull + 重启(2026-10-04 上线,实测通过)
 
-**当前进度**:**M1 全部完成**(2026-09-29,Task 1~9 全勾)。全部代码已 push 到 GitHub;生产服务在腾讯云 `106.55.76.235`(pm2 + Nginx),博客线上聊天已走通(首字节 0.14s / 总 11.34s,真流式)。**遗留**:域名 `agent.ai-myhome.space` 未解析 + HTTPS 待补(备案);智谱欠费(chunks_zhipu 空表)。下一步 M2(MCP Server)。
+**当前进度**:**M1 全部完成**(2026-09-29,Task 1~9 全勾)+ 自动部署(2026-10-04)。全部代码已 push 到 GitHub;生产服务在腾讯云 `106.55.76.235`(pm2 + Nginx),博客线上聊天已走通(首字节 0.14s / 总 11.34s,真流式)。**遗留**:域名 `agent.ai-myhome.space` 未解析 + HTTPS 待补(备案);智谱欠费(chunks_zhipu 空表)。下一步 M2(MCP Server)。
 
 **技术栈一句话**:Python + FastAPI(接口)+ LangGraph(编排)+ pgvector(向量检索)+ 豆包/智谱(大模型与 embedding)
 
@@ -39,6 +40,13 @@
 - 两路召回:向量路(语义)+ pg_trgm 关键词路(字面),RRF 融合,并列时关键词优先
 - `word_similarity(短问, 长文)` 参数顺序不能反,反了分数永远趋近 0(真库标定集抓出来的)
 - 验收:标定集 13 题(专有名词 5 题 jsPlumb/HZero/ip2region/OnlyOffice/Wepy + 原 8 题)全过
+
+**Task 9.5 自动部署要点**:
+- 为什么「拉取式」而不是 GitHub Actions「推式」:国内到 GitHub 网络不稳,推式断了要重推;拉取式断了下一个 5 分钟自动重试,零外部依赖
+- 实现:`scripts/deploy.sh`(git fetch 对比 commit 哈希 → 有变化才 `git pull --ff-only` + `pm2 restart`,没变化静默退出)+ 服务器 cron `*/5 * * * *`
+- 版本对比靠 git 自带 commit 哈希,不手写版本号文件(手写会漏改,git 不会)
+- 负担:一次 fetch 几十 KB,无更新零动作 —— 4C4G 服务器毫无压力;部署时 pm2 重启有 2~4 秒停机,个人项目可接受
+- 日志:`/var/log/agent-deploy.log`(只在真部署时写一行)
 
 ---
 
