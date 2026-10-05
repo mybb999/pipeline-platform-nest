@@ -21,7 +21,7 @@
 - [x] **Task 9.5 自动部署**:cron 定时拉取(每 5 分钟),有更新才 pull + 重启(2026-10-04 上线,实测通过)
 - [x] **Task 10 M2(MCP Server)**:把 `search_profile` 注册成 MCP 工具,Claude Code 可调用(2026-10-06 完成,stdio 协议级验证通过)
 
-**当前进度**:**M1 全部完成**(2026-09-29,Task 1~9 全勾)+ 自动部署(2026-10-04)+ **M2(Task 10)完成**(2026-10-06)。全部代码已 push 到 GitHub;生产服务在腾讯云 `106.55.76.235`(pm2 + Nginx),博客线上聊天已走通(首字节 0.14s / 总 11.34s,真流式)。**遗留**:域名 `agent.ai-myhome.space` 未解析 + HTTPS 待补 —— 接入备案已提交审核(2026-10-05,阿里云→腾讯云),通过后做 DNS + certbot;智谱欠费(chunks_zhipu 空表);真 Claude Code 会话里连 MCP 待用户 /mcp 批准(一次性操作)。
+**当前进度**:**M1 全部完成**(2026-09-29,Task 1~9 全勾)+ 自动部署(2026-10-04)+ **M2(Task 10)完成**(2026-10-06)。全部代码已 push 到 GitHub;生产服务在腾讯云 `106.55.76.235`(pm2 + Nginx),博客线上聊天已走通(首字节 0.14s / 总 11.34s,真流式)。**遗留**:域名 `agent.ai-myhome.space` 未解析 + HTTPS 待补 —— 接入备案已提交审核(2026-10-05,阿里云→腾讯云),通过后做 DNS + certbot;智谱欠费(chunks_zhipu 空表)。
 
 **技术栈一句话**:Python + FastAPI(接口)+ LangGraph(编排)+ pgvector(向量检索)+ 豆包/智谱(大模型与 embedding)
 
@@ -61,7 +61,7 @@
 - 用的是 **mcp 2.x**(FastMCP 已改名 MCPServer,uv 装到最新就是 2.x;报错信息自带迁移指引)。测试用 MCPServer 自带的 `list_tools`/`call_tool` 服务端直调(kb 注入 FakeKB 不连库),协议层用 `stdio_client` 起真进程验证
 - 验证三层递进:单测(3 绿+全量 38 绿)→ stdio 真握手(list_tools 返回 search_profile)→ 真调用(embedding API 200 + 真库返回简历原文)
 - 面试主线落地:同一函数 = LangGraph 工具 + MCP 工具,「一套能力,多个入口」;MCP = AI 工具的 USB-C
-- 遗留:真 Claude Code 会话里连一次(用户在 /mcp 面板批准即可,本机需 SSH 隧道连真库)
+- 遗留:无 —— 真 Claude Code 会话连接已由用户验证通过(2026-10-06)
 
 ---
 
