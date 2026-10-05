@@ -19,8 +19,9 @@
 - [x] **Task 8 前端**:回答里显示来源(📎 参考资料块,列出「文件 · 章节」)
 - [x] **Task 9 上线**:部署腾讯云(线上验证通过)
 - [x] **Task 9.5 自动部署**:cron 定时拉取(每 5 分钟),有更新才 pull + 重启(2026-10-04 上线,实测通过)
+- [x] **Task 10 M2(MCP Server)**:把 `search_profile` 注册成 MCP 工具,Claude Code 可调用(2026-10-06 完成,stdio 协议级验证通过)
 
-**当前进度**:**M1 全部完成**(2026-09-29,Task 1~9 全勾)+ 自动部署(2026-10-04)。全部代码已 push 到 GitHub;生产服务在腾讯云 `106.55.76.235`(pm2 + Nginx),博客线上聊天已走通(首字节 0.14s / 总 11.34s,真流式)。**遗留**:域名 `agent.ai-myhome.space` 未解析 + HTTPS 待补 —— 接入备案已提交审核(2026-10-05,阿里云→腾讯云),通过后做 DNS + certbot;智谱欠费(chunks_zhipu 空表)。下一步 M2(MCP Server)。
+**当前进度**:**M1 全部完成**(2026-09-29,Task 1~9 全勾)+ 自动部署(2026-10-04)+ **M2(Task 10)完成**(2026-10-06)。全部代码已 push 到 GitHub;生产服务在腾讯云 `106.55.76.235`(pm2 + Nginx),博客线上聊天已走通(首字节 0.14s / 总 11.34s,真流式)。**遗留**:域名 `agent.ai-myhome.space` 未解析 + HTTPS 待补 —— 接入备案已提交审核(2026-10-05,阿里云→腾讯云),通过后做 DNS + certbot;智谱欠费(chunks_zhipu 空表);真 Claude Code 会话里连 MCP 待用户 /mcp 批准(一次性操作)。
 
 **技术栈一句话**:Python + FastAPI(接口)+ LangGraph(编排)+ pgvector(向量检索)+ 豆包/智谱(大模型与 embedding)
 
@@ -33,6 +34,7 @@
 - 技术分层结论:RAG/Agent 底座**完全复用**(知识源换股票资料、工具换行情查询)—— 管「决策」;点软件按钮自动化是 RPA/UI 自动化,管「执行」,是另一门技术,另学
 - 预生成问答对在股票场景帮助有限(股票问法固定,不像访客口语化问法发散),主要价值在简历问答
 - 当前做的 RAG/Agent 是通用底座:「一套能力,多个场景」—— 与 M2「一套能力,多个入口」同一思想
+- **LLM Wiki**(博客「关于我」百科页:主题页浏览 + 页内问答框,复用同一 RAG 引擎)—— 排在最后,远期扩展。理解:Wiki = 浏览页面(前台壳)+ RAG(引擎)+ LLM 预整理(数据层,一鱼两吃:既浏览又入库当索引)
 
 **Agent 相关文档索引**(全部在本仓库 `pipeline-platform-server/docs/superpowers/`,历史版本在 git 历史里,不占文件夹):
 
@@ -53,6 +55,13 @@
 - 版本对比靠 git 自带 commit 哈希,不手写版本号文件(手写会漏改,git 不会)
 - 负担:一次 fetch 几十 KB,无更新零动作 —— 4C4G 服务器毫无压力;部署时 pm2 重启有 2~4 秒停机,个人项目可接受
 - 日志:`/var/log/agent-deploy.log`(只在真部署时写一行)
+
+**Task 10 M2(MCP Server)要点**:
+- 改动:`app/mcp_server.py`(新,~60 行)+ `tests/test_mcp.py`(新,3 测)+ `.mcp.json`(新,Claude Code 配置)+ `pyproject.toml` 加 `mcp>=2`。`search_profile` 函数一行没改 —— 工具层与入口解耦
+- 用的是 **mcp 2.x**(FastMCP 已改名 MCPServer,uv 装到最新就是 2.x;报错信息自带迁移指引)。测试用 MCPServer 自带的 `list_tools`/`call_tool` 服务端直调(kb 注入 FakeKB 不连库),协议层用 `stdio_client` 起真进程验证
+- 验证三层递进:单测(3 绿+全量 38 绿)→ stdio 真握手(list_tools 返回 search_profile)→ 真调用(embedding API 200 + 真库返回简历原文)
+- 面试主线落地:同一函数 = LangGraph 工具 + MCP 工具,「一套能力,多个入口」;MCP = AI 工具的 USB-C
+- 遗留:真 Claude Code 会话里连一次(用户在 /mcp 面板批准即可,本机需 SSH 隧道连真库)
 
 ---
 
