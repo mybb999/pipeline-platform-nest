@@ -20,8 +20,9 @@
 - [x] **Task 9 上线**:部署腾讯云(线上验证通过)
 - [x] **Task 9.5 自动部署**:cron 定时拉取(每 5 分钟),有更新才 pull + 重启(2026-10-04 上线,实测通过)
 - [x] **Task 10 M2(MCP Server)**:把 `search_profile` 注册成 MCP 工具,Claude Code 可调用(2026-10-06 完成,stdio 协议级验证通过)
+- [x] **Task 11 M3.1 会话记忆**:LangGraph checkpointer 持久化(session_id 存 PG),追问接得上(2026-10-07 完成,真库对照验证通过)
 
-**当前进度**:**M1 全部完成**(2026-09-29,Task 1~9 全勾)+ 自动部署(2026-10-04)+ **M2(Task 10)完成**(2026-10-06)。全部代码已 push 到 GitHub;生产服务在腾讯云 `106.55.76.235`(pm2 + Nginx),博客线上聊天已走通(首字节 0.14s / 总 11.34s,真流式)。**遗留**:域名 `agent.ai-myhome.space` 未解析 + HTTPS 待补 —— 接入备案已提交审核(2026-10-05,阿里云→腾讯云),通过后做 DNS + certbot;智谱欠费(chunks_zhipu 空表)。
+**当前进度**:**M1 全部完成**(2026-09-29,Task 1~9 全勾)+ 自动部署(2026-10-04)+ **M2(Task 10)完成**(2026-10-06)+ **M3.1(Task 11)完成**(2026-10-07)。全部代码已 push 到 GitHub;生产服务在腾讯云 `106.55.76.235`(pm2 + Nginx),博客线上聊天已走通(首字节 0.14s / 总 11.34s,真流式)。**遗留**:域名 `agent.ai-myhome.space` 未解析 + HTTPS 待补 —— 接入备案已提交审核(2026-10-05,阿里云→腾讯云),通过后做 DNS + certbot;智谱欠费(chunks_zhipu 空表)。下一步:M3.2(账号 + 会话列表,用户可上手 Vue 前端)。
 
 **技术栈一句话**:Python + FastAPI(接口)+ LangGraph(编排)+ pgvector(向量检索)+ 豆包/智谱(大模型与 embedding)
 
@@ -62,6 +63,14 @@
 - 验证三层递进:单测(3 绿+全量 38 绿)→ stdio 真握手(list_tools 返回 search_profile)→ 真调用(embedding API 200 + 真库返回简历原文)
 - 面试主线落地:同一函数 = LangGraph 工具 + MCP 工具,「一套能力,多个入口」;MCP = AI 工具的 USB-C
 - 遗留:无 —— 真 Claude Code 会话连接已由用户验证通过(2026-10-06)
+
+**Task 11 M3.1(会话记忆)要点**:
+- 改动:`app/checkpoint.py`(新,PG checkpointer 构建+序列化白名单)+ `graph.py`(build_graph 加 checkpointer 参数 + AgentGraph.ainvoke)+ `main.py`(session_id 请求字段 + build_inputs 组装 + lifespan 建表)+ `scripts/memory_check.py`(新,真库三连问验证)+ 测试 4 个;依赖加 `langgraph-checkpoint-postgres`
+- 产品决策(用户定):**访客不持久化、无会话列表**,行为与之前完全一致;登录用户才带 session_id 挂 checkpointer —— 3.1 对访客透明,用户侧体验 3.2 才可见
+- 关键设计:带 session_id 只发最新一句,历史靠 checkpointer 恢复;不带走老路(全历史入图)
+- 真库对照验证:同 thread 追问「那第二个呢」准确数出彩讯项目;无历史对照 thread 硬猜「俄罗斯套娃」—— 记忆价值被对照实验证明
+- 踩坑(3 个,面试可讲):①`from_conn_string` 3.x 返回 AsyncIterator,必须 async with 进入 ②Windows psycopg 异步不认 ProactorEventLoop,要换 Selector 策略 ③checkpoint 序列化自定义类型(SourceRef)需显式白名单,否则未来版本报错;另有 GBK emoji 打印崩溃(chat_check 一并修)
+- **部署事故(2026-10-07,已修复)**:新依赖部署时发现服务器卡旧版本 —— pm2 里 `uv run` 自动 sync 改写 uv.lock → 文件变脏 → deploy.sh 的 `git pull` abort。用 reflog + 部署日志还原时间线;修复 deploy.sh 加「pull 前 checkout uv.lock」。生产端到端验证通过(同 thread 追问准确答出彩讯项目,对照 thread 反问答不出)
 
 ---
 
