@@ -21,8 +21,9 @@
 - [x] **Task 9.5 自动部署**:cron 定时拉取(每 5 分钟),有更新才 pull + 重启(2026-10-04 上线,实测通过)
 - [x] **Task 10 M2(MCP Server)**:把 `search_profile` 注册成 MCP 工具,Claude Code 可调用(2026-10-06 完成,stdio 协议级验证通过)
 - [x] **Task 11 M3.1 会话记忆**:LangGraph checkpointer 持久化(session_id 存 PG),追问接得上(2026-10-07 完成,真库对照验证通过)
+- [x] **Task 12 M3.2 账号+会话列表**:注册/登录/JWT + conversations 表 + 会话 CRUD + 博客侧栏 UI(2026-10-10 完成,全链路联调验证通过)
 
-**当前进度**:**M1 全部完成**(2026-09-29,Task 1~9 全勾)+ 自动部署(2026-10-04)+ **M2(Task 10)完成**(2026-10-06)+ **M3.1(Task 11)完成**(2026-10-07)。全部代码已 push 到 GitHub;生产服务在腾讯云 `106.55.76.235`(pm2 + Nginx),博客线上聊天已走通(首字节 0.14s / 总 11.34s,真流式)。**遗留**:域名 `agent.ai-myhome.space` 未解析 + HTTPS 待补 —— 接入备案已提交审核(2026-10-05,阿里云→腾讯云),通过后做 DNS + certbot;智谱欠费(chunks_zhipu 空表)。下一步:M3.2(账号 + 会话列表,用户可上手 Vue 前端)。
+**当前进度**:**M1 全部完成**(2026-09-29,Task 1~9 全勾)+ 自动部署(2026-10-04)+ **M2(Task 10)完成**(2026-10-06)+ **M3.1(Task 11)完成**(2026-10-07)+ **M3(Task 12 M3.2)完成**(2026-10-10)—— **M3 全部完成**。全部代码已 push 到 GitHub;生产服务在腾讯云 `106.55.76.235`(pm2 + Nginx),博客线上聊天已走通(首字节 0.14s / 总 11.34s,真流式)。**遗留**:域名 `agent.ai-myhome.space` 未解析 + HTTPS 待补 —— 接入备案已提交审核(2026-10-05,阿里云→腾讯云),通过后做 DNS + certbot;智谱欠费(chunks_zhipu 空表)。下一步:M4(MinerU 读文档助手)。
 
 **技术栈一句话**:Python + FastAPI(接口)+ LangGraph(编排)+ pgvector(向量检索)+ 豆包/智谱(大模型与 embedding)
 
@@ -71,6 +72,13 @@
 - 真库对照验证:同 thread 追问「那第二个呢」准确数出彩讯项目;无历史对照 thread 硬猜「俄罗斯套娃」—— 记忆价值被对照实验证明
 - 踩坑(3 个,面试可讲):①`from_conn_string` 3.x 返回 AsyncIterator,必须 async with 进入 ②Windows psycopg 异步不认 ProactorEventLoop,要换 Selector 策略 ③checkpoint 序列化自定义类型(SourceRef)需显式白名单,否则未来版本报错;另有 GBK emoji 打印崩溃(chat_check 一并修)
 - **部署事故(2026-10-07,已修复)**:新依赖部署时发现服务器卡旧版本 —— pm2 里 `uv run` 自动 sync 改写 uv.lock → 文件变脏 → deploy.sh 的 `git pull` abort。用 reflog + 部署日志还原时间线;修复 deploy.sh 加「pull 前 checkout uv.lock」。生产端到端验证通过(同 thread 追问准确答出彩讯项目,对照 thread 反问答不出)
+
+**Task 12 M3.2(账号+会话列表)要点**:
+- 后端改动:`app/auth.py`(新,bcrypt 哈希+pyjwt,5 测试)+ `app/accounts.py`(新,users/conversations 数据层)+ `main.py`(注册/登录/会话 CRUD/历史接口 + agent 归属校验)+ `scripts/auth_check.py`(真库 7 项全过);依赖 pyjwt/bcrypt;`AGENT_JWT_SECRET` 配置
+- 前端改动(AImyhome):转发层 5 个新路由 + agent.post.ts 透传 Authorization;`useAgentAuth` composable;ChatPanel 加侧栏(登录表单/会话列表/新建/切换/删除)
+- 关键设计:conversation.id 直接当 checkpointer 的 thread_id(会话表和记忆天然同号);归属防线 = 所有会话 SQL 都带 user_id 条件(A 取不到/删不掉 B 的会话);历史从 checkpointer 状态读(snapshot.checkpoint['channel_values']['messages'])
+- 验证:55 测试全绿;真库 auth_check 7 项(注册/重复拦截/登录/标题补全/列表/归属防线/删除);本地联调全链路(注册→建会话→SSE→标题→追问→历史 4 条累积)
+- 踩坑(面试可讲):①Vue 模板里「普通对象内的 ref」不解包 —— `auth.user` 是永远 truthy 的 Ref 对象,v-if 恒真渲染错模板;解构成顶层 ref 解决 ②langgraph-checkpoint 3.x CheckpointTuple 无 .values,消息在 checkpoint.channel_values 里 ③uvicorn 0.36 Windows 硬编码 ProactorEventLoop(不理会 set_event_loop_policy,查源码确认),用 loop=SelectorEventLoop 覆盖 —— 本地 dev 用 run_dev.py 入口;生产 Linux 无此问题
 
 ---
 
