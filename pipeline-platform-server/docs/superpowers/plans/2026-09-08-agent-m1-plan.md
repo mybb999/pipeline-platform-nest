@@ -21,9 +21,11 @@
 - [x] **Task 9.5 自动部署**:cron 定时拉取(每 5 分钟),有更新才 pull + 重启(2026-10-04 上线,实测通过)
 - [x] **Task 10 M2(MCP Server)**:把 `search_profile` 注册成 MCP 工具,Claude Code 可调用(2026-10-06 完成,stdio 协议级验证通过)
 - [x] **Task 11 M3.1 会话记忆**:LangGraph checkpointer 持久化(session_id 存 PG),追问接得上(2026-10-07 完成,真库对照验证通过)
-- [x] **Task 12 M3.2 账号+会话列表**:注册/登录/JWT + conversations 表 + 会话 CRUD + 博客侧栏 UI(2026-10-10 完成,全链路联调验证通过)
+- [x] **Task 12 M3.2 账号+会话列表**:注册/登录/JWT + conversations 表 + 会话 CRUD + 博客侧栏 UI(2026-10-10 完成,全链路联调验证通过;2026-10-11 追加:主会话+分支(豆包式)+ 改密码 + 侧栏居中打磨)
+- [ ] **Task 13 M4(MinerU 读文档助手)**:PDF/Word 解析 + 按意图入库(下一步)
+- [ ] **Task 14 M5(积分体系)**:待设计 —— 方向见 spec M5 节(积分表 + 模型单价 + 扣减;侧栏「剩余积分」接真实值)
 
-**当前进度**:**M1 全部完成**(2026-09-29,Task 1~9 全勾)+ 自动部署(2026-10-04)+ **M2(Task 10)完成**(2026-10-06)+ **M3.1(Task 11)完成**(2026-10-07)+ **M3(Task 12 M3.2)完成**(2026-10-10)—— **M3 全部完成**。全部代码已 push 到 GitHub;生产服务在腾讯云 `106.55.76.235`(pm2 + Nginx),博客线上聊天已走通(首字节 0.14s / 总 11.34s,真流式)。**遗留**:域名 `agent.ai-myhome.space` 未解析 + HTTPS 待补 —— 接入备案已提交审核(2026-10-05,阿里云→腾讯云),通过后做 DNS + certbot;智谱欠费(chunks_zhipu 空表)。下一步:M4(MinerU 读文档助手)。
+**当前进度**:**M1 全部完成**(2026-09-29,Task 1~9 全勾)+ 自动部署(2026-10-04)+ **M2(Task 10)完成**(2026-10-06)+ **M3.1(Task 11)完成**(2026-10-07)+ **M3(Task 12 M3.2)完成**(2026-10-10,主会话+分支 2026-10-11 追加)—— **M3 全部完成**。全部代码已 push 到 GitHub;生产服务在腾讯云 `106.55.76.235`(pm2 + Nginx),博客线上聊天已走通(首字节 0.14s / 总 11.34s,真流式)。**遗留**:域名 `agent.ai-myhome.space` 未解析 + HTTPS 待补 —— 接入备案已提交审核(2026-10-05,阿里云→腾讯云),通过后做 DNS + certbot;智谱欠费(chunks_zhipu 空表);Lucas 待回顾 M3.2 代码(建议顺序:auth.py → accounts.py → main.py 路由 → useAgentAuth.ts → ChatPanel 侧栏)。下一步:M4(MinerU 读文档助手),M5(积分体系)排 M4 后。
 
 **技术栈一句话**:Python + FastAPI(接口)+ LangGraph(编排)+ pgvector(向量检索)+ 豆包/智谱(大模型与 embedding)
 
@@ -79,6 +81,7 @@
 - 关键设计:conversation.id 直接当 checkpointer 的 thread_id(会话表和记忆天然同号);归属防线 = 所有会话 SQL 都带 user_id 条件(A 取不到/删不掉 B 的会话);历史从 checkpointer 状态读(snapshot.checkpoint['channel_values']['messages'])
 - 验证:55 测试全绿;真库 auth_check 7 项(注册/重复拦截/登录/标题补全/列表/归属防线/删除);本地联调全链路(注册→建会话→SSE→标题→追问→历史 4 条累积)
 - 踩坑(面试可讲):①Vue 模板里「普通对象内的 ref」不解包 —— `auth.user` 是永远 truthy 的 Ref 对象,v-if 恒真渲染错模板;解构成顶层 ref 解决 ②langgraph-checkpoint 3.x CheckpointTuple 无 .values,消息在 checkpoint.channel_values 里 ③uvicorn 0.36 Windows 硬编码 ProactorEventLoop(不理会 set_event_loop_policy,查源码确认),用 loop=SelectorEventLoop 覆盖 —— 本地 dev 用 run_dev.py 入口;生产 Linux 无此问题
+- **收尾补全(2026-10-11)**:①改密码自助接口 `/api/auth/change-password`(旧密码证明本人 → 新哈希覆盖,强度校验 ≥6 位)+ 前端用户卡「改密码」表单 ②`scripts/reset_password.py` 管理员重置脚本(密码哈希单向,库里看不见明文 —— 忘密码只有「管理员重置」和「登录后自助改」两条路,这也是当初拒绝「明文密码入库」需求后给的合规替代方案) ③侧栏 UI 两轮打磨:「已登录」→「剩余积分」占位(后续随所选模型变化)+ 全部内容居中 ④**居中真凶 = `.card` 自带 20px padding**(main.css 组件基类):侧栏放进卡片后左边缝 30px 右边缝 10px,整体贴右;修法 `-ml-5` 负边距抵消 + 宽度补 20px —— 边框线/聊天区纹丝不动。**验证方法**(可复用):PIL 裁剪放大+坐标网格+按行扫描像素颜色突变,精确量出元素边缘 x 坐标(比肉眼估准);puppeteer-core 连本机 Chrome 量 getBoundingClientRect(修后左 10/右 10,中心对齐 458.5 vs 459) ⑤首屏防闪:登录态从 localStorage 恢复前(authReady)侧栏不渲染 —— 之前 SSR 无 token 先渲染登录表单,JS 加载完才切换,卡顿时闪一下;这也是 SSR/hydration 经典坑(服务端与客户端首帧状态不一致) ⑥**主会话+分支(豆包式,用户要求)**:主会话 = 账号里 id 最小的会话(不加字段、老账号零迁移),列表置顶 📌 不可删(后端 400 拦截);刷新/登录自动进主会话,新会话建的都是分支(插主会话下面),删分支自动回主会话;注册时自动建主会话 + 列表接口空列表自愈 —— 永远有一个「家」可回。TDD:纯函数 `sort_with_main`(3 测试)+ 真库 auth_check 扩到 9 项全过
 
 ---
 
