@@ -1231,17 +1231,25 @@ git push   # cron 自动部署
 | mineru 版本 | 4.0.12(4.x CLI:`mineru-kit parse`,basic 档纯 CPU ONNX,最低 2G 内存 —— 比 2.x pipeline 推荐 16G 更适合 3.6G 机器) |
 | 依赖策略 | mineru[core] 在可选依赖组 `parse` 里(依赖树重含 gradio/torch,本地开发环境不装;deploy.sh `uv sync --group parse` 只在服务器装) |
 | 部署踩坑 | ①cron 环境无 PATH,`uv: command not found` → deploy.sh 用绝对路径 /root/.local/bin/uv ②智谱欠费 429 曾拖垮整个文档入库 → ingest 按 provider 容错(单表失败不炸) ③TestClient 多线程并发有 BlockingPortal 唤醒竞态(faulthandler 取证)→ 队列测试改纯 async 客户端 |
-| 服务器实测 | 待填(模型下载 + 解析耗时/内存) |
-| 4G 机结论 | 待填(能跑/降级方案) |
+| 服务器实测 | 1 页 PDF:6.03s,**峰值内存 770MB**(3.6G 机 + 2G swap 完全扛得住);mineru 4.0.12 basic 档 |
+| 4G 机结论 | **能跑,无需降级方案**。串行队列 + 名额 3 已上线 |
 
 ## 执行进度(实时更新)
 
-- [x] 13.2 解析服务 + 13.3 文档库 + 13.4/13.5 文档工具 + 13.6 接入 —— 代码完成,83 测试全绿,已 push
+- [x] 13.2 解析服务 + 13.3 文档库 + 13.4/13.5 文档工具 + 13.6 接入 —— 代码完成,84 测试全绿,已 push
 - [x] 13.7 前端上传 UI + 代理 —— 完成已 push(Vercel 已部署)
-- [x] 13.1 服务器安装 mineru[core](INSTALL-DONE)+ basic 模型下载中
+- [x] 13.1 服务器安装 mineru[core](INSTALL-DONE)+ basic 模型下载 + 实测(6s / 770MB)
 - [x] Nginx `/api/parse` → 8001 路由已加并 reload(2026-10-14)
 - [x] **备案已通过(2026-10-14 用户告知)** → 域名 agent.ai-myhome.space + HTTPS 可做了(M4 收尾后)
-- [ ] 13.1 实测解析 + 13.8 doc_check 服务器侧 + 端到端上传验证
+- [x] 13.8 服务器端到端验证:注册→上传 PDF(经 Nginx 80)→解析 chunks=1→提问命中 search_document 回答文档内容(2026-10-14 实测全通)
+
+## 线上事故记录(2026-10-14,部署 M4 时连环踩坑)
+
+1. **agent-api 崩溃循环 3 天**:lifespan 用了 `asyncio.to_thread` 但 main.py 漏 `import asyncio` → 启动即 NameError,pm2 重启 251 次。**测试全绿也没发现**(测试不进 lifespan)。教训:启动路径的代码改动要在服务器上实际起一次进程验证;回归测试锁 `asyncio` 在 main 命名空间(弱但锁住这个具体坑)。
+2. **uv: command not found**:cron/pm2 环境 PATH 没有 ~/.local/bin → deploy.sh 和 docparse 子进程都要用绝对路径/which 兜底。
+3. **解析 404**:服务定义 `/parse`,Nginx 原样转发 `/api/parse` 不剥前缀 → 路由对齐到 `/api/parse`。
+4. **子进程找不到 mineru**:mineru 在可选依赖组 parse,`uv run` 必须带 `--group parse`。
+5. **TestClient 多线程并发竞态**(开发期):anyio BlockingPortal 唤醒竞态,faulthandler 取证,队列测试改纯 async 客户端。
 
 ## 风险
 
