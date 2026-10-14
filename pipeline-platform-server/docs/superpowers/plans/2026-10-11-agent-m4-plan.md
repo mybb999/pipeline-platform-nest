@@ -70,15 +70,17 @@ uv add "mineru[core]"
 
 - [ ] **Step 2: 服务器装依赖 + 下载模型**
 
-SSH 到 `106.55.76.235`(root,密钥已配),在 `/root/aimyhome-agent` 执行:
+> **版本实况(执行时确认)**:uv 解析出的是 mineru **4.x**(`mineru[core]>=4.0.12`),不是 2.x。4.x 的 CLI 是 `mineru-kit parse`(无状态一次性转换),档位 basic = OCR + 小模型 ONNX,纯 CPU、最低 2G 内存 —— 比 2.x pipeline(推荐 16G)更适合我们的 3.6G 机器。docparse.py 已按 4.x 写。
+
+SSH 到 `106.55.76.235`(root,`~/.ssh/id_ed25519_agent` 密钥),在 `/opt/aimyhome-agent` 执行:
 
 ```bash
-cd /root/aimyhome-agent
+cd /opt/aimyhome-agent
 git pull --ff-only
 UV_DEFAULT_INDEX=https://mirrors.cloud.tencent.com/pypi/simple uv sync
 uv run mineru --version
-# 下载 pipeline 后端所需模型(几 GB,耐心等)
-uv run mineru-models-download --model_type all
+# 下载 basic 档模型(约 0.8GB)
+uv run mineru-kit models download --tier basic
 ```
 
 - [ ] **Step 3: 检查/创建 2G swap**
@@ -95,8 +97,8 @@ echo '/swapfile none swap sw 0 0' >> /etc/fstab
 
 ```bash
 # 造一个 2~3 页测试 PDF(任意文档转 PDF 上传服务器)
-/usr/bin/time -v uv run mineru -p /tmp/test.pdf -o /tmp/mtest --backend pipeline 2>&1 | tail -5
-cat /tmp/mtest/test/*.md | head -20
+/usr/bin/time -v uv run mineru-kit parse /tmp/test.pdf -o /tmp/test.md --tier basic 2>&1 | tail -5
+head -20 /tmp/test.md
 ```
 
 记录:耗时、峰值内存(Maximum resident set size)。
@@ -1226,11 +1228,20 @@ git push   # cron 自动部署
 
 | 项目 | 数值 |
 |---|---|
-| mineru 版本 | 待填 |
-| 测试 PDF 页数 | 待填 |
-| 解析耗时 | 待填 |
-| 峰值内存(Max RSS) | 待填 |
+| mineru 版本 | 4.0.12(4.x CLI:`mineru-kit parse`,basic 档纯 CPU ONNX,最低 2G 内存 —— 比 2.x pipeline 推荐 16G 更适合 3.6G 机器) |
+| 依赖策略 | mineru[core] 在可选依赖组 `parse` 里(依赖树重含 gradio/torch,本地开发环境不装;deploy.sh `uv sync --group parse` 只在服务器装) |
+| 部署踩坑 | ①cron 环境无 PATH,`uv: command not found` → deploy.sh 用绝对路径 /root/.local/bin/uv ②智谱欠费 429 曾拖垮整个文档入库 → ingest 按 provider 容错(单表失败不炸) ③TestClient 多线程并发有 BlockingPortal 唤醒竞态(faulthandler 取证)→ 队列测试改纯 async 客户端 |
+| 服务器实测 | 待填(模型下载 + 解析耗时/内存) |
 | 4G 机结论 | 待填(能跑/降级方案) |
+
+## 执行进度(实时更新)
+
+- [x] 13.2 解析服务 + 13.3 文档库 + 13.4/13.5 文档工具 + 13.6 接入 —— 代码完成,83 测试全绿,已 push
+- [x] 13.7 前端上传 UI + 代理 —— 完成已 push(Vercel 已部署)
+- [x] 13.1 服务器安装 mineru[core](INSTALL-DONE)+ basic 模型下载中
+- [x] Nginx `/api/parse` → 8001 路由已加并 reload(2026-10-14)
+- [x] **备案已通过(2026-10-14 用户告知)** → 域名 agent.ai-myhome.space + HTTPS 可做了(M4 收尾后)
+- [ ] 13.1 实测解析 + 13.8 doc_check 服务器侧 + 端到端上传验证
 
 ## 风险
 
