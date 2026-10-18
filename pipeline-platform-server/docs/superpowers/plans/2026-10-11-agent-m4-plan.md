@@ -1243,6 +1243,7 @@ git push   # cron 自动部署
 - [x] **备案已通过(2026-10-14 用户告知)** → 域名 agent.ai-myhome.space + HTTPS 可做了(M4 收尾后)
 - [x] 13.8 服务器端到端验证:注册→上传 PDF(经 Nginx 80)→解析 chunks=1→提问命中 search_document 回答文档内容(2026-10-14 实测全通)
 - [x] **2026-10-18 .doc 修复**:上传老式 .doc 报「Tier 'basic' is only supported for PDF and image files; 'doc' files use tier 'flash'」→ `parse_tier()` 按后缀选档:PDF→basic,Office(doc/docx)→flash(本地确定性解析,不联网无额外模型);服务器用最小 docx 实测 flash 档通过。112 测试全绿
+- [x] **2026-10-18 参考资料展示修复**:①`ingest_temp` 的 source 原硬编码 `"upload"` → 改为存文档标题,参考资料显示真实文档名;②MinerU 的 docx 标题自带 Markdown(`**个人登记表**`)→ 新增 `clean_section()` 入库前清洗(#/\*/` 和标题路径残留的 `/`),线上已 UPDATE 修复存量 24 行临时数据;③前端参考资料默认折叠 + 同文件章节合并,括号计数改为合并后的条数(和点开明细对得上)。115 测试全绿
 
 ## 线上事故记录(2026-10-14,部署 M4 时连环踩坑)
 
