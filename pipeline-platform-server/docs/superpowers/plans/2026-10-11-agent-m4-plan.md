@@ -1242,6 +1242,7 @@ git push   # cron 自动部署
 - [x] Nginx `/api/parse` → 8001 路由已加并 reload(2026-10-14)
 - [x] **备案已通过(2026-10-14 用户告知)** → 域名 agent.ai-myhome.space + HTTPS 可做了(M4 收尾后)
 - [x] 13.8 服务器端到端验证:注册→上传 PDF(经 Nginx 80)→解析 chunks=1→提问命中 search_document 回答文档内容(2026-10-14 实测全通)
+- [x] **2026-10-18 .doc 修复**:上传老式 .doc 报「Tier 'basic' is only supported for PDF and image files; 'doc' files use tier 'flash'」→ `parse_tier()` 按后缀选档:PDF→basic,Office(doc/docx)→flash(本地确定性解析,不联网无额外模型);服务器用最小 docx 实测 flash 档通过。112 测试全绿
 
 ## 线上事故记录(2026-10-14,部署 M4 时连环踩坑)
 
