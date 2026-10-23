@@ -27,7 +27,7 @@
 - [x] **Task 15 记忆治理**(2026-10-17 完成):上下文压缩 —— 手动按钮(超 8000 字亮「⚠ 压缩上下文」)+ 自动兜底(超 40000 字强制压);压缩 = LLM 把历史压成 200 字摘要 + 保留最近 6 轮;写回用 checkpointer.aput(先 adelete_thread 再 aput —— 同版本号写入会被 saver 静默拒掉,线上实测踩坑);线上验证:40 条 40000 字 → 7 条 3283 字。105 测试全绿
   - **2026-10-17 追加修复(按钮不亮)**:①前端按钮原来按「显示文字」数字数,工具轮内容(每次文档检索几千字)不算 → 按钮几乎永远不亮;改为服务端统一口径 —— `/messages` 返回 `chars`(真实总字数)+ `threshold`,每轮 SSE 末尾新增 `event: chars` 事件实时更新,按钮按服务端值亮/灭;②手动阈值 8000 → 20000 字(8000 ≈ 1 万 token,弹按钮纯属打扰);③摘要取材上限 8000 → 30000 字(历史 2 万+ 时只取最后 8000 会把早期身份/结论丢掉);④iter_sse 不再发 [DONE],挪到 /api/agent 的 gen 里(chars 事件必须排在 [DONE] 前)。108 测试全绿
 - [x] **Task 16 可观测性:LangSmith 链路追踪**(2026-10-23 完成):每次对话的 LLM/工具调用链、耗时、token 用量自动上报 LangSmith(云版)。配置用官方变量名 `LANGSMITH_TRACING` / `LANGSMITH_API_KEY` / `LANGSMITH_PROJECT`(无 AGENT_ 前缀);`config.py` 启动时把值搬进 `os.environ`(SDK 只读进程环境,pydantic 读 .env 不写回),开关和 key 缺一不生效。LangGraph 自动埋点,业务代码零改动;本地默认关,生产 `.env` 打开。2026-10-23 追加:`kb.search`(retriever)+ `search_profile`(tool)加 `@traceable`,瀑布图直接看到检索耗时与命中块(输入只留查询词,DSN 密码不上报)
-- **2026-10-23 豆包模型下线迁移(线上事故)**:`doubao-seed-2-0-lite-260215` 于 2026-10-22 14:00 EOS(官方下线公告,11-24 彻底关停),线上所有对话报 `InvalidEndpoint.ClosedEndpoint`。定位方式:`GET /api/v3/models`(Bearer API key 即可)看到该模型 status=`Retiring`,其余 2.0/2.1 模型正常;同 key 的 embedding 正常,排除欠费/网络。修复:换官方推荐迁移目标 `doubao-seed-2-1-lite-260915`(`app/llm.py`,实测正常,`thinking:disabled` 兼容)。**同时发现**:前端 `ChatPanel.vue` 只解析 `choices/sources/chars`,后端 SSE 的 `{"error":...}` 错误块被静默吞掉 → 用户看到空白气泡(暂未修)
+- **2026-10-23 豆包模型下线迁移(线上事故)**:`doubao-seed-2-0-lite-260215` 于 2026-10-22 14:00 EOS(官方下线公告,11-24 彻底关停),线上所有对话报 `InvalidEndpoint.ClosedEndpoint`。定位方式:`GET /api/v3/models`(Bearer API key 即可)看到该模型 status=`Retiring`,其余 2.0/2.1 模型正常;同 key 的 embedding 正常,排除欠费/网络。修复:换官方推荐迁移目标 `doubao-seed-2-1-lite-260915`(`app/llm.py`,实测正常,`thinking:disabled` 兼容)。**同时发现**:前端 `ChatPanel.vue` 只解析 `choices/sources/chars`,后端 SSE 的 `{"error":...}` 错误块被静默吞掉 → 用户看到空白气泡。2026-10-24 已修:解析循环识别 `parsed.error` 并抛给外层 catch → 顶部红色横幅 + 删除空占位气泡(半截回答保留);博客 `server/utils/llm.ts` 的模型名同步改为 2.1-Lite。验证:puppeteer + 本地 mock SSE 三种情况(纯错误/半截+错误/正常)全部通过
 
 **当前进度**:**M1 全部完成**(2026-09-29,Task 1~9 全勾)+ 自动部署(2026-10-04)+ **M2(Task 10)完成**(2026-10-06)+ **M3.1(Task 11)完成**(2026-10-07)+ **M3(Task 12 M3.2)完成**(2026-10-10,主会话+分支 2026-10-11 追加)—— **M3 全部完成** + **M4(Task 13)完成**(2026-10-14,服务器端到端验证通过)+ **域名 + HTTPS 完成**(2026-10-15:DNS 在阿里云(NS 指向万网,不在腾讯)、A 记录 agent→106.55.76.235、certbot 签发 + 自动续期 timer、腾讯云防火墙开 443、上传改浏览器直传(25MB)+ CORS)。全部代码已 push 到 GitHub;生产服务在腾讯云 `106.55.76.235`(pm2 + Nginx 双进程)。**Task 16 LangSmith 链路追踪已完成**(2026-10-23):生产 `.env` 开 `LANGSMITH_TRACING=true` 并配 key 后,每次对话的 LLM/工具调用、耗时、token 自动上报,业务代码零改动。**遗留**:智谱欠费(chunks_zhipu 空表);Lucas 待回顾 M3.2/M4 代码;Vercel 的 AGENT_BASE_URL 已切 https://agent.ai-myhome.space 并验证通过(2026-10-15)。**Vercel 构建事故**(已修复):①Vercel 因 engines `>=20` 自动升到 Node 24,与本地 22 不一致;②首页预渲染 500(itemKey/unstorage)只在 Vercel 构建环境复现 —— 关闭首页预渲染兜底(运行时 SSR 不受影响)。下一步:对话记忆治理(长上下文摘要)→ M5(积分体系)。
 
@@ -35,7 +35,6 @@
 
 **已知遗留**:
 - 智谱欠费,降级表 chunks_zhipu 为空 —— 充值后重灌即可
-- 博客前端 `ChatPanel.vue` 不识别 SSE `{"error":...}` 块:模型失败时显示空白气泡(2026-10-23 发现,待修)
 - 对话 LLM 无自动降级(`get_llm` 只返回单个模型):豆包故障时不会自动切智谱(embedding 有双写降级,对话没有)—— 2026-10-23 讨论,暂不做
 - 「最近在哪家公司」这类时间问题,留给 Task 6 的 Agent 推理解决
 
