@@ -23,7 +23,7 @@
 - [x] **Task 11 M3.1 会话记忆**:LangGraph checkpointer 持久化(session_id 存 PG),追问接得上(2026-10-07 完成,真库对照验证通过)
 - [x] **Task 12 M3.2 账号+会话列表**:注册/登录/JWT + conversations 表 + 会话 CRUD + 博客侧栏 UI(2026-10-10 完成,全链路联调验证通过;2026-10-11 追加:主会话+分支(豆包式)+ 改密码 + 侧栏居中打磨)
 - [ ] **Task 13 M4(MinerU 读文档助手)**:PDF/Word 解析 + 按意图入库(下一步)
-- [ ] **Task 14 M5(积分体系)**:待设计 —— 方向见 spec M5 节(积分表 + 模型单价 + 扣减;侧栏「剩余积分」接真实值)
+- [x] **Task 14 M5(剩余积分展示)**(2026-10-30 完成):需求澄清后范围收窄 —— **不做用户积分记账/扣减**,只展示大模型账户的真实剩余额度。豆包:火山费用中心 `QueryBalanceAcct`(AK/SK + SigV4 签名,自实现不引入 SDK;踩坑:密钥派生不能加 AWS 的 `VOLC` 前缀),1 积分 = 0.001 元,缓存 5 分钟,失败降级「—」;智谱 GLM-4.7-Flash 免费 → 显示「免费」。侧栏随所选模型切换;`GET /api/credits` + 博客 `server/api/credits.get.ts` 薄壳转发。实测返回 910 积分 / ≈¥0.91。131 测试全绿
 - [x] **Task 15 记忆治理**(2026-10-17 完成):上下文压缩 —— 手动按钮(超 8000 字亮「⚠ 压缩上下文」)+ 自动兜底(超 40000 字强制压);压缩 = LLM 把历史压成 200 字摘要 + 保留最近 6 轮;写回用 checkpointer.aput(先 adelete_thread 再 aput —— 同版本号写入会被 saver 静默拒掉,线上实测踩坑);线上验证:40 条 40000 字 → 7 条 3283 字。105 测试全绿
   - **2026-10-17 追加修复(按钮不亮)**:①前端按钮原来按「显示文字」数字数,工具轮内容(每次文档检索几千字)不算 → 按钮几乎永远不亮;改为服务端统一口径 —— `/messages` 返回 `chars`(真实总字数)+ `threshold`,每轮 SSE 末尾新增 `event: chars` 事件实时更新,按钮按服务端值亮/灭;②手动阈值 8000 → 20000 字(8000 ≈ 1 万 token,弹按钮纯属打扰);③摘要取材上限 8000 → 30000 字(历史 2 万+ 时只取最后 8000 会把早期身份/结论丢掉);④iter_sse 不再发 [DONE],挪到 /api/agent 的 gen 里(chars 事件必须排在 [DONE] 前)。108 测试全绿
 - [x] **Task 16 可观测性:LangSmith 链路追踪**(2026-10-23 完成):每次对话的 LLM/工具调用链、耗时、token 用量自动上报 LangSmith(云版)。配置用官方变量名 `LANGSMITH_TRACING` / `LANGSMITH_API_KEY` / `LANGSMITH_PROJECT`(无 AGENT_ 前缀);`config.py` 启动时把值搬进 `os.environ`(SDK 只读进程环境,pydantic 读 .env 不写回),开关和 key 缺一不生效。LangGraph 自动埋点,业务代码零改动;本地默认关,生产 `.env` 打开。2026-10-23 追加:`kb.search`(retriever)+ `search_profile`(tool)加 `@traceable`,瀑布图直接看到检索耗时与命中块(输入只留查询词,DSN 密码不上报)
