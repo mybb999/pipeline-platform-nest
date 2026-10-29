@@ -240,20 +240,35 @@ Loader(加载):
 
 ---
 
-## 五、高频追问清单(自测用)
+## 五、高频追问清单(自测用:先看题说一遍,再看答案速记对一遍)
 
-1. 一句话介绍这个项目?(数据管道:采集→队列→ETL→分表→聚合→大屏)
-2. 数据流走一遍?(见「项目深挖 1」的图)
-3. 为什么迁 NestJS?迁移策略是什么?(契约不变 + 重写 + 一比一映射)
+1. 一句话介绍这个项目?
+   **答**:实时数据管道平台:浏览器 SDK 采集事件 → 验签限流 → 消息队列 → ETL 清洗 → 按天分表 → 定时聚合 → 管理大屏;Express 迁移 NestJS 重写,API 契约不变。
+2. 数据流走一遍?
+   **答**:SDK → /api/collect(HMAC 验签 + Redis 限流)→ RabbitMQ → Worker 消费 → Parser 清洗(UA/IP/URL)→ Loader 按天分表批量写 → @Cron 聚合进 stats 库 → JWT 保护查询。关键:采集和查询两条链路解耦(详见「项目深挖 1」的图)。
+3. 为什么迁 NestJS?迁移策略是什么?
+   **答**:学习模块化/DI/装饰器。策略是重写不是重构:新建项目一比一映射(route→controller、middleware→guard),URL/`{code,message,data}`/Bearer 全不变,前端零改动,旧项目冻结。
 4. 验签流程?5 分钟窗口防什么?防不了什么?
+   **答**:`HMAC-SHA256(secretKey, body+timestamp)`,三个头齐 + ±5 分钟 + app 状态检查。防「过期请求重放」;窗口内的重放要靠业务幂等,是已知边界。
 5. 限流用的是什么算法?为什么存 Redis?
+   **答**:固定窗口计数器(INCR + TTL)。默认 ThrottlerStorage 在进程内存,PM2 多进程各记各的等于没限流 → 自定义 RedisThrottlerStorage 共享计数。
 6. 消息队列三个作用?消息重复/丢失怎么办?
+   **答**:削峰、解耦、异步。不丢 = 持久化 + 手动 ACK;不重 = 幂等消费(聚合 ON DUPLICATE KEY 天然幂等)。
 7. 分表为什么按天?TTL 怎么清?
+   **答**:埋点量最大、天然按天组织:写 = 动态建表 + 批量 INSERT,清 = 整表 DROP(比 DELETE 快几个数量级)。命名 events_YYYYMMDD 由纯函数生成;每天 4 点 Cleaner 扫表,超 30 天 DROP。
 8. Redlock 干什么的?锁过期怎么办?
+   **答**:多实例部署时防止 cron 重复执行(数值翻倍)。TTL 120s + 自动续期;抢不到锁(ResourceLockedError)直接跳过 —— 聚合幂等,最坏情况也不会错。
 9. 三个 MySQL 库怎么划分?Prisma 和 mysql2 怎么分工?
+   **答**:pipeline_user(用户/应用)、pipeline_log(原始事件分表)、pipeline_stats(聚合结果)—— 隔离流量和爆炸半径。Prisma 管业务 CRUD,mysql2 裸 SQL 管分表/聚合(动态表名 Prisma 编译期做不到)。
 10. JWT 流程?被盗怎么办?bcrypt 为什么安全?
+    **答**:登录 → bcrypt.compare → 签 `{id, email}`;Guard 验签挂 request。防盗:HTTPS + 短过期 + payload 不放敏感信息。bcrypt = 单向 + 随机盐 + 可调成本(盐同密码两次哈希不同,彩虹表失效,暴力被 10 轮拉慢)。
 11. NestJS 的 Guard/Interceptor/Pipe/Filter 各是什么?执行顺序?
+    **答**:Pipe 参数转换校验 → Guard 鉴权(不过就 401)→ Interceptor 响应包装 → Controller → Filter 异常兜底。项目四件套全用:ValidationPipe、Auth/Gateway/Throttler 三守卫、ResponseInterceptor、AllExceptionsFilter。
 12. 越权怎么防?SQL 注入怎么防?
+    **答**:越权 = 资源归属校验(`WHERE id = ? AND userId = 当前用户`,查不到统一 404 不暴露存在性)。注入 = 全参数化占位符,表名只来自纯函数/白名单,永不接收用户输入。
 13. Node 事件循环?什么时候会阻塞?
-14. 如果埋点量涨 100 倍,哪里先撑不住?(答:单机 MySQL 写入 → 分表已解单表膨胀,下一步是消费端并发 + 库拆分;MQ 可横向加消费者;聚合是瓶颈时改流式聚合。诚实说现在单机 2G 就够)
-15. 这个项目和 AImyhome Agent 项目有什么联系?(答:同一套「采集/管道/聚合」思维 + 检索都用了向量;管道项目练 Nest/MySQL/Redis/MQ,Agent 项目练 Python/LangGraph/RAG —— 后端两条技术线都覆盖)
+    **答**:单线程 + 事件循环 + 非阻塞 IO,网络/数据库操作不阻塞主线程。CPU 密集计算会阻塞 —— 所以 Agent 项目把 MinerU 解析拆成独立服务,两个项目同一思路。
+14. 如果埋点量涨 100 倍,哪里先撑不住?
+    **答**:单机 MySQL 写入最先到顶 → 分表已解单表膨胀,下一步消费端并发 + 库拆分;MQ 可横向加消费者;聚合瓶颈时改流式。诚实说现在单机 2G 就够,但瓶颈在哪很清楚。
+15. 这个项目和 AImyhome Agent 项目有什么联系?
+    **答**:后端两条技术线互补 —— 管道项目练 Node/Nest/MySQL/Redis/MQ 这条经典后端主线,Agent 项目练 Python/LangGraph/RAG 这条 AI 主线;通用能力(鉴权防线、限流、SQL、部署运维、TDD)两个项目同一套打法,跨语言迁移正好证明方法论。
