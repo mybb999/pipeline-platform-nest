@@ -17,12 +17,19 @@ curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
 apt install -y nodejs git nginx
 npm install -g pm2
 
-# 2G 内存服务器建议加交换空间（防止编译时 OOM）
+# 2G 内存服务器必须加交换空间（防止编译时 OOM）
 fallocate -l 2G /swapfile
 chmod 600 /swapfile
 mkswap /swapfile
 swapon /swapfile
 echo '/swapfile none swap sw 0 0' | tee -a /etc/fstab
+
+# 验证：必须能看到 /swapfile；只有 fstab 条目而文件不存在 = 实际没有 swap
+swapon --show
+
+# 尽量少交换，但保留应急缓冲
+echo 'vm.swappiness=10' > /etc/sysctl.d/99-pipeline-swap.conf
+sysctl --system
 ```
 
 ### 2. 拉代码 + 启动数据库
@@ -126,40 +133,113 @@ certbot --nginx -d pipeline.ai-myhome.space
 
 ### 9. 自动化部署（Cron 定时检查）
 
-服务器每分钟检查 GitHub 是否有新提交，有则自动拉取编译重启：
+服务器每 5 分钟检查 GitHub 是否有新提交，有则自动拉取编译重启。脚本带 flock 防重叠、失败重试冷却（30 分钟）、依赖变更检测和 Node 堆上限（1.6G 小机器防 OOM）：
 
 ```bash
 # 创建部署检查脚本
 cat > /opt/deploy-check.sh << 'SCRIPT'
 #!/bin/bash
-cd /opt/pipeline-platform-nest
-git fetch origin master 2>&1
-LOCAL=$(git rev-parse HEAD)
-REMOTE=$(git rev-parse origin/master)
-if [ "$LOCAL" != "$REMOTE" ]; then
-  echo "[deploy] $(date) 检测到新提交"
-  git pull origin master
-  cd pipeline-platform-server && npm install --registry=https://registry.npmmirror.com && npx prisma generate && npm run build && npm run build:sdk
-  cd ../pipeline-platform-web && npm install --registry=https://registry.npmmirror.com && npm run build
-  pm2 restart all
-  echo "[deploy] 完成"
+# 自动部署:每 5 分钟检查 GitHub,有更新则拉取、构建、重启。
+# 2026-11-02 加固:flock 防重叠;失败即停并保留待办(30 分钟后重试);
+# 依赖未变跳过 npm install;Node 堆上限 768M,避免 OOM 拖死 1.6G 小机器。
+set -uo pipefail
+
+REPO=/opt/pipeline-platform-nest
+PENDING=/var/lib/pipeline-deploy-pending
+FAILED=/var/lib/pipeline-deploy-last-fail
+LOCK=/var/lock/deploy-check.lock
+
+exec 9>"$LOCK"
+if ! flock -n 9; then
+  echo "[deploy] $(date) 上次部署未结束,跳过"
+  exit 0
 fi
+
+cd "$REPO" || exit 1
+
+# 失败冷却:同一批变更 30 分钟内不重复重试,避免反复构建拖垮机器
+if [ -f "$PENDING" ] && [ -f "$FAILED" ]; then
+  if [ $(( $(date +%s) - $(stat -c %Y "$FAILED") )) -lt 1800 ]; then
+    exit 0
+  fi
+fi
+
+if [ ! -f "$PENDING" ]; then
+  if ! timeout 120 git fetch origin master 2>&1; then
+    echo "[deploy] $(date) git fetch 失败"
+    exit 1
+  fi
+  LOCAL=$(git rev-parse HEAD)
+  REMOTE=$(git rev-parse origin/master)
+  if [ "$LOCAL" = "$REMOTE" ]; then
+    exit 0
+  fi
+  echo "[deploy] $(date) 检测到新提交 $LOCAL -> $REMOTE"
+  if ! git pull --ff-only origin master; then
+    echo "[deploy] $(date) git pull 失败"
+    exit 1
+  fi
+  git diff --name-only HEAD@{1} HEAD > "$PENDING"
+else
+  echo "[deploy] $(date) 继续上次未完成的部署"
+fi
+
+fail() {
+  echo "[deploy] $(date) $1"
+  touch "$FAILED"
+  exit 1
+}
+
+# 小内存机器:限制 Node 堆;宁可构建失败也不要 OOM 拖死整机
+export NODE_OPTIONS="--max-old-space-size=768"
+
+SERVER_DEPS=0
+WEB_DEPS=0
+grep -qx 'pipeline-platform-server/package-lock.json' "$PENDING" && SERVER_DEPS=1
+grep -qx 'pipeline-platform-web/package-lock.json' "$PENDING" && WEB_DEPS=1
+
+cd pipeline-platform-server || fail "进入 server 目录失败"
+if [ "$SERVER_DEPS" = "1" ]; then
+  echo "[deploy] $(date) server 依赖有变化,安装中"
+  npm install || fail "server npm install 失败"
+else
+  echo "[deploy] $(date) server 依赖无变化,跳过 npm install"
+fi
+npx prisma generate || fail "prisma generate 失败"
+npm run build || fail "server build 失败"
+npm run build:sdk || fail "sdk build 失败"
+
+cd ../pipeline-platform-web || fail "进入 web 目录失败"
+if [ "$WEB_DEPS" = "1" ]; then
+  echo "[deploy] $(date) web 依赖有变化,安装中"
+  npm install || fail "web npm install 失败"
+else
+  echo "[deploy] $(date) web 依赖无变化,跳过 npm install"
+fi
+npm run build || fail "web build 失败"
+
+pm2 restart all || fail "pm2 restart 失败"
+rm -f "$PENDING" "$FAILED"
+echo "[deploy] $(date) 完成"
 SCRIPT
 chmod +x /opt/deploy-check.sh
 ```
 
 ```bash
-# 设置定时任务，每分钟执行一次
-crontab -l 2>/dev/null | grep -v deploy-check | { cat; echo "* * * * * /opt/deploy-check.sh >> /var/log/deploy.log 2>&1"; } | crontab -
+# 设置定时任务，每 5 分钟执行一次
+crontab -l 2>/dev/null | grep -v deploy-check | { cat; echo "*/5 * * * * /opt/deploy-check.sh >> /var/log/deploy.log 2>&1"; } | crontab -
 ```
 
 > 此命令会自动跳过已存在的 deploy-check 任务再新增，重复执行不会创建多条。
+>
+> 日志轮转配置在 `/etc/logrotate.d/pipeline-deploy`（weekly、保留 4 份、copytruncate）。
+> 注意：`/var/log` 属组是 syslog，配置里需要 `su root syslog`，否则 logrotate 会拒绝执行。
 
 ---
 
 ## 后续更新部署（代码改动后）
 
-**自动：** 本地 `git push` → cron 每分钟检测 → 服务器自动拉取编译重启。
+**自动：** 本地 `git push` → cron 每 5 分钟检测 → 服务器自动拉取编译重启。
 
 **手动：** 如果需要手动部署：
 
@@ -237,3 +317,24 @@ systemctl restart nginx  # 重启
 tail /var/log/deploy.log       # 查看部署日志
 crontab -l                     # 查看定时任务
 ```
+
+## 2026-11-02 运维加固记录（OOM 卡死排查）
+
+**现象**：`pipeline.ai-myhome.space` 80/443 拒绝连接、SSH 端口能连但不返回 banner，整机无响应；重启后恢复。
+
+**根因**：
+
+- 1.6G 内存，`/etc/fstab` 有 `/swapfile` 条目但文件不存在，`swapon --show` 为空 —— 实际 0 swap。
+- 每分钟执行的自动部署脚本没有锁：内存紧张时 `git fetch` 被 OOM 杀掉，下一分钟又启动一个；一旦检测到提交，会并发跑多个 `npm install` + 前后端构建。OOM 快照里同时出现 4 个 `npm install`（每个虚拟内存约 1.4G）。
+- 常驻服务约 700M（MySQL 162M、RabbitMQ 119M、Node server 114M、worker 94M + pm2/docker/snapd），留给构建的不足 700M。
+- 11-01 11:34 最后一次 OOM，20:51 内核日志中断，整机卡死。deploy.log 中 269 次 `git-remote-https died of signal 9`。
+
+**已做**：
+
+- 重建 2G swapfile 并设置 `vm.swappiness=10`（`swapon --show` 已确认）。
+- 部署脚本：`flock` 防重叠、失败即停 + 30 分钟冷却重试、仅 lockfile 变化时 `npm install`、`NODE_OPTIONS=--max-old-space-size=768`、`git fetch` 120s 超时。
+- cron 从每分钟改为每 5 分钟。
+- 关闭 fwupd 服务（`fwupd-refresh.timer` 曾被 OOM 杀掉）。
+- `/var/log/deploy.log` 加 logrotate 并已轮转（原 14M）。
+
+**验证**：`sdk.js` 200、`POST /api/collect` 201、事件经 RabbitMQ → worker → MySQL 落库；部署脚本空跑 exit 0。
