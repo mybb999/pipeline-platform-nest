@@ -235,6 +235,48 @@ crontab -l 2>/dev/null | grep -v deploy-check | { cat; echo "*/5 * * * * /opt/de
 > 日志轮转配置在 `/etc/logrotate.d/pipeline-deploy`（weekly、保留 4 份、copytruncate）。
 > 注意：`/var/log` 属组是 syslog，配置里需要 `su root syslog`，否则 logrotate 会拒绝执行。
 
+### 10. 数据库备份
+
+每天 3:30 全量导出 `pipeline_user` / `pipeline_log` / `pipeline_stats`，gzip 后存到 `/opt/backups/mysql`，保留约 7 天。脚本用 `--single-transaction --quick` 流式导出，不锁表、几乎不占内存；根分区余量不足 2G 时自动跳过。
+
+```bash
+install -m 755 /opt/pipeline-platform-nest/scripts/mysql-backup.sh /opt/mysql-backup.sh
+
+# 每天 3:30 执行（重复执行不会产生多条）
+crontab -l 2>/dev/null | grep -v mysql-backup | { cat; echo "30 3 * * * /opt/mysql-backup.sh >> /var/log/mysql-backup.log 2>&1"; } | crontab -
+
+# 手动跑一次验证
+/opt/mysql-backup.sh
+ls -lh /opt/backups/mysql/
+```
+
+日志轮转 `/etc/logrotate.d/pipeline-backup`（`/var/log` 属组是 syslog，需要 `su root syslog`）：
+
+```bash
+cat > /etc/logrotate.d/pipeline-backup << 'EOF'
+/var/log/mysql-backup.log {
+    su root syslog
+    weekly
+    rotate 4
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}
+EOF
+```
+
+恢复方式（会覆盖同名库的现有数据）：
+
+```bash
+zcat /opt/backups/mysql/pipeline-YYYYMMDD-HHMMSS.sql.gz | \
+  docker exec -i pipeline-mysql sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot'
+```
+
+> 同盘备份只能防误删/改错库，防不了磁盘或整机故障。建议定期拉一份到本地：
+> `scp -i ~/.ssh/id_ed25519_pipeline root@120.25.122.243:/opt/backups/mysql/<文件名>.sql.gz .`
+
 ---
 
 ## 后续更新部署（代码改动后）
@@ -316,6 +358,11 @@ systemctl restart nginx  # 重启
 # 自动化部署日志
 tail /var/log/deploy.log       # 查看部署日志
 crontab -l                     # 查看定时任务
+
+# 数据库备份
+/opt/mysql-backup.sh           # 手动备份一次
+ls -lh /opt/backups/mysql/     # 查看备份文件
+tail /var/log/mysql-backup.log # 查看备份日志
 ```
 
 ## 2026-11-02 运维加固记录（OOM 卡死排查）
