@@ -126,7 +126,7 @@ certbot --nginx -d pipeline.ai-myhome.space
 
 - 按提示输入邮箱并同意条款，成功后 Nginx 会自动加上 SSL 配置和 HTTP→HTTPS 跳转
 - 证书有效期 90 天，certbot 的 systemd 定时器会自动续期
-- 验证自动续期：`certbot renew --dry-run`
+- 验证自动续期：`certbot renew --dry-run`（2026-11-02 实测通过；certbot 会加约 380 秒随机延迟，属正常，不是卡住）
 - 验证访问：`curl https://pipeline.ai-myhome.space/api/health`
 
 > 如果 HTTPS 访问超时，先检查防火墙是否放行了 443 端口。
